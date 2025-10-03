@@ -6,10 +6,14 @@ import { InputTab } from '@/components/tabs/InputTab'
 import { HistoryTab } from '@/components/tabs/HistoryTab'
 import { AnalysisTab } from '@/components/tabs/AnalysisTab'
 import { SettingsTab } from '@/components/tabs/SettingsTab'
+import { useUsers } from '@/hooks/useUsers'
 
 function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // ユーザー管理を一箇所で行い、全タブで共有
+  const { mainUser, users, loading: usersLoading, addNewUser, editUser, removeUser } = useUsers()
 
   useEffect(() => {
     const init = async () => {
@@ -53,24 +57,34 @@ function App() {
       {/* メインコンテンツエリア */}
       <div className="flex-1">
         <Tabs defaultValue="input" className="h-full gap-0">
-          <TabsContent value="input" className="overflow-hidden px-2 pt-1 pb-12">
-            <InputTab />
+          <TabsContent value="input" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
+            <InputTab
+              mainUser={mainUser}
+              users={users}
+              addNewUser={addNewUser}
+            />
           </TabsContent>
 
-          <TabsContent value="history" className="overflow-hidden px-2 pt-1 pb-12">
+          <TabsContent value="history" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
             <HistoryTab />
           </TabsContent>
 
-          <TabsContent value="analysis" className="overflow-hidden px-2 pt-1 pb-12">
+          <TabsContent value="analysis" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
             <AnalysisTab />
           </TabsContent>
 
-          <TabsContent value="settings" className="overflow-hidden px-2 pt-1 pb-12">
-            <SettingsTab />
+          <TabsContent value="settings" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
+            <SettingsTab
+              mainUser={mainUser}
+              users={users}
+              addNewUser={addNewUser}
+              editUser={editUser}
+              removeUser={removeUser}
+            />
           </TabsContent>
 
           {/* 下部固定タブナビゲーション */}
-          <div className="fixed bottom-0 left-0 right-0 border-t bg-background">
+          <div className="fixed bottom-0 left-0 right-0 border-t bg-[#1a5c3a]">
             <TabsList className="grid w-full grid-cols-4 h-12 rounded-none">
               <TabsTrigger value="input" className="flex flex-col gap-0 py-1">
                 <span className="text-base leading-none">✏️</span>

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -9,7 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { GameMode, UmaMark } from '@/lib/db'
+import type { GameMode, UmaMark, UmaRule, User } from '@/lib/db'
+import { getDefaultUmaRule } from '@/lib/utils'
+import { PlayerSelect } from '@/components/PlayerSelect'
 
 // セッション設定の型定義
 interface SessionSettings {
@@ -17,11 +19,13 @@ interface SessionSettings {
   rate: number
   umaValue: number
   chipRate: number
+  umaRule: UmaRule
 }
 
 // プレイヤー結果の型定義
 interface PlayerResult {
   playerName: string
+  userId: string | null // 集計用ID（nullは集計対象外）
   score: number | null // ±点数
   umaMark: UmaMark
   chips: number
@@ -43,6 +47,7 @@ const DEFAULT_SETTINGS: SessionSettings = {
   rate: 30,
   umaValue: 10,
   chipRate: 100,
+  umaRule: getDefaultUmaRule(), // localStorageから取得
 }
 
 // ウママークの選択肢（縦積み表示用）
@@ -57,11 +62,10 @@ const UMA_MARK_OPTIONS: { value: UmaMark; label: string; display: string }[] = [
 ]
 
 // 初期プレイヤー名
-const getInitialPlayerNames = (mode: GameMode, playerCount: number): string[] => {
-  const names = ['自分']
-  const labels = ['B', 'C', 'D', 'E', 'F', 'G', 'H']
-  for (let i = 0; i < playerCount - 1; i++) {
-    names.push(labels[i])
+const getInitialPlayerNames = (_mode: GameMode, playerCount: number, mainUserName?: string): string[] => {
+  const names = [mainUserName || '自分']
+  for (let i = 2; i <= playerCount; i++) {
+    names.push(`user${i}`)
   }
   return names
 }
@@ -69,6 +73,7 @@ const getInitialPlayerNames = (mode: GameMode, playerCount: number): string[] =>
 // 初期プレイヤー結果作成
 const createInitialPlayerResult = (playerName: string): PlayerResult => ({
   playerName,
+  userId: null, // デフォルトは集計対象外
   score: null,
   umaMark: '',
   chips: 0,
@@ -77,8 +82,8 @@ const createInitialPlayerResult = (playerName: string): PlayerResult => ({
   umaMarkManual: false,
 })
 
-// ウママーク自動割り当て（標準ルール）
-const assignUmaMarks = (players: PlayerResult[], mode: GameMode): UmaMark[] => {
+// ウママーク自動割り当て
+const assignUmaMarks = (players: PlayerResult[], mode: GameMode, umaRule: UmaRule): UmaMark[] => {
   // 点数で順位をつける（見学者を除く）
   const playersWithIndex = players
     .map((p, idx) => ({ player: p, index: idx }))
@@ -87,17 +92,36 @@ const assignUmaMarks = (players: PlayerResult[], mode: GameMode): UmaMark[] => {
 
   const umaMarks: UmaMark[] = players.map(() => '')
 
+  // 2位の点数を取得（2位マイナス判定用）
+  const secondPlaceScore = playersWithIndex.length >= 2 ? (playersWithIndex[1].player.score ?? 0) : 0
+  const isSecondMinus = umaRule === 'second-minus' && secondPlaceScore < 0
+
   if (mode === '4-player') {
-    // 4人打ち標準ルール: 1位→○○、2位→○、3位→✗、4位→✗✗
-    if (playersWithIndex.length >= 1) umaMarks[playersWithIndex[0].index] = '○○'
-    if (playersWithIndex.length >= 2) umaMarks[playersWithIndex[1].index] = '○'
-    if (playersWithIndex.length >= 3) umaMarks[playersWithIndex[2].index] = '✗'
-    if (playersWithIndex.length >= 4) umaMarks[playersWithIndex[3].index] = '✗✗'
+    if (isSecondMinus) {
+      // 4人打ち2位マイナス判定: 1位→○○○、2位→無印、3位→✗、4位→✗✗
+      if (playersWithIndex.length >= 1) umaMarks[playersWithIndex[0].index] = '○○○'
+      if (playersWithIndex.length >= 2) umaMarks[playersWithIndex[1].index] = ''
+      if (playersWithIndex.length >= 3) umaMarks[playersWithIndex[2].index] = '✗'
+      if (playersWithIndex.length >= 4) umaMarks[playersWithIndex[3].index] = '✗✗'
+    } else {
+      // 4人打ち標準ルール: 1位→○○、2位→○、3位→✗、4位→✗✗
+      if (playersWithIndex.length >= 1) umaMarks[playersWithIndex[0].index] = '○○'
+      if (playersWithIndex.length >= 2) umaMarks[playersWithIndex[1].index] = '○'
+      if (playersWithIndex.length >= 3) umaMarks[playersWithIndex[2].index] = '✗'
+      if (playersWithIndex.length >= 4) umaMarks[playersWithIndex[3].index] = '✗✗'
+    }
   } else {
-    // 3人打ち標準ルール: 1位→○○、2位→○、3位→✗✗✗
-    if (playersWithIndex.length >= 1) umaMarks[playersWithIndex[0].index] = '○○'
-    if (playersWithIndex.length >= 2) umaMarks[playersWithIndex[1].index] = '○'
-    if (playersWithIndex.length >= 3) umaMarks[playersWithIndex[2].index] = '✗✗✗'
+    if (isSecondMinus) {
+      // 3人打ち2位マイナス判定: 1位→○○○、2位→✗、3位→✗✗
+      if (playersWithIndex.length >= 1) umaMarks[playersWithIndex[0].index] = '○○○'
+      if (playersWithIndex.length >= 2) umaMarks[playersWithIndex[1].index] = '✗'
+      if (playersWithIndex.length >= 3) umaMarks[playersWithIndex[2].index] = '✗✗'
+    } else {
+      // 3人打ち標準ルール: 1位→○○、2位→○、3位→✗✗✗
+      if (playersWithIndex.length >= 1) umaMarks[playersWithIndex[0].index] = '○○'
+      if (playersWithIndex.length >= 2) umaMarks[playersWithIndex[1].index] = '○'
+      if (playersWithIndex.length >= 3) umaMarks[playersWithIndex[2].index] = '✗✗✗'
+    }
   }
 
   return umaMarks
@@ -185,11 +209,62 @@ const calculatePlayerTotals = (
   }
 }
 
-export function InputTab() {
+interface InputTabProps {
+  mainUser: User | null
+  users: User[]
+  addNewUser: (name: string) => Promise<User>
+}
+
+export function InputTab({ mainUser, users, addNewUser }: InputTabProps) {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null)
   const [settings, setSettings] = useState<SessionSettings>(DEFAULT_SETTINGS)
   const [hanchans, setHanchans] = useState<Hanchan[]>([])
   const [playerCount, setPlayerCount] = useState<number>(0)
+
+  // コンポーネントマウント時にlocalStorageから最新のウマルールを取得
+  useEffect(() => {
+    setSettings(prev => ({
+      ...prev,
+      umaRule: getDefaultUmaRule()
+    }))
+  }, [])
+
+  // メインユーザー名が変更されたら、既存の半荘データの1列目を更新
+  useEffect(() => {
+    if (mainUser && hanchans.length > 0) {
+      setHanchans(prevHanchans =>
+        prevHanchans.map(hanchan => ({
+          ...hanchan,
+          players: hanchan.players.map((player, idx) =>
+            idx === 0 && player.userId === mainUser.id
+              ? { ...player, playerName: mainUser.name }
+              : player
+          )
+        }))
+      )
+    }
+  }, [mainUser?.name])
+
+  // 登録ユーザー名が変更されたら、該当するプレイヤー名を更新
+  useEffect(() => {
+    if (users.length > 0 && hanchans.length > 0) {
+      setHanchans(prevHanchans =>
+        prevHanchans.map(hanchan => ({
+          ...hanchan,
+          players: hanchan.players.map(player => {
+            if (!player.userId) return player
+
+            const matchedUser = users.find(u => u.id === player.userId)
+            if (matchedUser && matchedUser.name !== player.playerName) {
+              return { ...player, playerName: matchedUser.name }
+            }
+
+            return player
+          })
+        }))
+      )
+    }
+  }, [users])
 
   // モード選択時に初期データをセットアップ
   const handleModeSelect = (mode: GameMode) => {
@@ -197,16 +272,33 @@ export function InputTab() {
     const initialPlayerCount = mode === '4-player' ? 4 : 3
     setPlayerCount(initialPlayerCount)
 
-    const playerNames = getInitialPlayerNames(mode, initialPlayerCount)
+    const playerNames = getInitialPlayerNames(mode, initialPlayerCount, mainUser?.name)
 
     // 初期表示で3つの半荘を作成
     const initialHanchans: Hanchan[] = [1, 2, 3].map((num) => ({
       hanchanNumber: num,
-      players: playerNames.map(createInitialPlayerResult),
+      players: playerNames.map((name, idx) => ({
+        ...createInitialPlayerResult(name),
+        userId: idx === 0 && mainUser ? mainUser.id : null, // 1列目は自分のID
+      })),
       autoCalculated: false,
     }))
 
     setHanchans(initialHanchans)
+  }
+
+  // プレイヤー選択更新ハンドラー
+  const handlePlayerChange = (playerIndex: number, userId: string | null, playerName: string) => {
+    setHanchans(prevHanchans =>
+      prevHanchans.map(hanchan => ({
+        ...hanchan,
+        players: hanchan.players.map((player, idx) =>
+          idx === playerIndex
+            ? { ...player, userId, playerName }
+            : player
+        ),
+      }))
+    )
   }
 
   // モード未選択時は選択画面を表示
@@ -313,8 +405,21 @@ export function InputTab() {
                 <tr className="border-b">
                   <th className="p-0.5 text-center w-7 text-muted-foreground text-[10px]">#</th>
                   {hanchans[0]?.players.map((player, idx) => (
-                    <th key={idx} className="p-1 text-center font-semibold">
-                      {player.playerName}
+                    <th key={idx} className="p-1">
+                      {idx === 0 ? (
+                        <div className="text-sm font-medium text-center">{mainUser?.name || '自分'}</div>
+                      ) : (
+                        <PlayerSelect
+                          value={player.userId ?? '__default__'}
+                          playerName={player.playerName}
+                          onChange={(userId, playerName) => handlePlayerChange(idx, userId, playerName)}
+                          position={idx + 1}
+                          mainUser={mainUser}
+                          users={users}
+                          onAddUser={addNewUser}
+                          excludeMainUser={true}
+                        />
+                      )}
                     </th>
                   ))}
                 </tr>
@@ -381,7 +486,7 @@ export function InputTab() {
                               }
 
                               // ウママーク自動割り当て（手動変更されていない場合のみ）
-                              const umaMarks = assignUmaMarks(currentHanchan.players, selectedMode!)
+                              const umaMarks = assignUmaMarks(currentHanchan.players, selectedMode!, settings.umaRule)
                               currentHanchan.players.forEach((p, idx) => {
                                 if (!p.umaMarkManual) {
                                   p.umaMark = umaMarks[idx]
@@ -404,7 +509,7 @@ export function InputTab() {
                               setHanchans(newHanchans)
                             }}
                           >
-                            <SelectTrigger className="h-14 text-xs border border-input bg-background hover:bg-accent w-5 px-0 [&>svg]:hidden whitespace-pre-line leading-[0.9] py-0.5 text-center ml-0.5 justify-center">
+                            <SelectTrigger className="h-14 text-xs border border-input bg-white hover:bg-accent w-5 px-0 [&>svg]:hidden whitespace-pre-line leading-[0.9] py-0.5 text-center ml-0.5 justify-center">
                               <SelectValue placeholder="─">
                                 {player.umaMark ? UMA_MARK_OPTIONS.find(o => o.value === player.umaMark)?.display : '─'}
                               </SelectValue>

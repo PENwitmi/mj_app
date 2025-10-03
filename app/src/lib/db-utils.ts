@@ -100,6 +100,116 @@ export async function addUser(name: string): Promise<User> {
   }
 }
 
+/**
+ * ユーザー名を更新
+ */
+export async function updateUser(userId: string, name: string): Promise<User> {
+  // バリデーション
+  if (!name.trim()) {
+    const error = new ValidationError('ユーザー名が空です', 'name');
+    logger.error(error.message, {
+      context: 'db-utils.updateUser',
+      error
+    });
+    throw error;
+  }
+
+  try {
+    logger.debug('ユーザー名更新開始', {
+      context: 'db-utils.updateUser',
+      data: { userId, newName: name }
+    });
+
+    // ユーザー情報を取得
+    const user = await db.users.get(userId);
+    if (!user) {
+      const error = new NotFoundError('ユーザーが見つかりません', { userId });
+      logger.error(error.message, {
+        context: 'db-utils.updateUser',
+        error
+      });
+      throw error;
+    }
+
+    // ユーザー名を更新
+    await db.users.update(userId, { name: name.trim() });
+
+    // 更新後のユーザー情報を取得
+    const updatedUser = await db.users.get(userId);
+    if (!updatedUser) {
+      throw new DatabaseError('更新後のユーザー情報取得に失敗しました');
+    }
+
+    logger.info('ユーザー名更新成功', {
+      context: 'db-utils.updateUser',
+      data: { userId, oldName: user.name, newName: updatedUser.name }
+    });
+
+    return updatedUser;
+  } catch (err) {
+    if (err instanceof ValidationError || err instanceof NotFoundError) {
+      throw err;
+    }
+    const error = new DatabaseError('ユーザー名の更新に失敗しました', { originalError: err });
+    logger.error(error.message, {
+      context: 'db-utils.updateUser',
+      error
+    });
+    throw error;
+  }
+}
+
+/**
+ * ユーザーを削除（メインユーザーは削除不可）
+ */
+export async function deleteUser(userId: string): Promise<void> {
+  try {
+    logger.debug('ユーザー削除開始', {
+      context: 'db-utils.deleteUser',
+      data: { userId }
+    });
+
+    // ユーザー情報を取得
+    const user = await db.users.get(userId);
+    if (!user) {
+      const error = new NotFoundError('ユーザーが見つかりません', { userId });
+      logger.error(error.message, {
+        context: 'db-utils.deleteUser',
+        error
+      });
+      throw error;
+    }
+
+    // メインユーザーの削除を防止
+    if (user.isMainUser) {
+      const error = new ValidationError('メインユーザーは削除できません', 'userId');
+      logger.error(error.message, {
+        context: 'db-utils.deleteUser',
+        error,
+        data: { userId }
+      });
+      throw error;
+    }
+
+    await db.users.delete(userId);
+
+    logger.info('ユーザー削除成功', {
+      context: 'db-utils.deleteUser',
+      data: { userId, userName: user.name }
+    });
+  } catch (err) {
+    if (err instanceof ValidationError || err instanceof NotFoundError) {
+      throw err;
+    }
+    const error = new DatabaseError('ユーザーの削除に失敗しました', { originalError: err });
+    logger.error(error.message, {
+      context: 'db-utils.deleteUser',
+      error
+    });
+    throw error;
+  }
+}
+
 // ========================================
 // Session Functions
 // ========================================

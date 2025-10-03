@@ -2,14 +2,21 @@
  * アプリケーション全般のエラー（基底クラス）
  */
 export class AppError extends Error {
+  code: string
+  userMessage: string // ユーザー向けメッセージ（日本語）
+  context?: Record<string, unknown>
+
   constructor(
     message: string,
-    public code: string,
-    public userMessage: string, // ユーザー向けメッセージ（日本語）
-    public context?: Record<string, unknown>
+    code: string,
+    userMessage: string,
+    context?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'AppError';
+    this.code = code;
+    this.userMessage = userMessage;
+    this.context = context;
   }
 }
 
