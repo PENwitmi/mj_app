@@ -1,17 +1,13 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { initializeApp, clearAllData } from './lib/db'
-import { getMainUser, getAllUsers, addUser } from './lib/db-utils'
-import type { User } from './lib/db'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { initializeApp } from './lib/db'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { InputTab } from '@/components/tabs/InputTab'
+import { HistoryTab } from '@/components/tabs/HistoryTab'
+import { AnalysisTab } from '@/components/tabs/AnalysisTab'
+import { SettingsTab } from '@/components/tabs/SettingsTab'
 
 function App() {
-  const [mainUser, setMainUser] = useState<User | null>(null)
-  const [allUsers, setAllUsers] = useState<User[]>([])
-  const [newUserName, setNewUserName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,15 +16,6 @@ function App() {
       try {
         // アプリ初期化（メインユーザー作成）
         await initializeApp()
-
-        // メインユーザー取得
-        const main = await getMainUser()
-        setMainUser(main || null)
-
-        // 全ユーザー取得
-        const users = await getAllUsers()
-        setAllUsers(users)
-
         setLoading(false)
       } catch (err) {
         setError(err instanceof Error ? err.message : '初期化エラー')
@@ -39,145 +26,72 @@ function App() {
     init()
   }, [])
 
-  const handleAddUser = async () => {
-    if (!newUserName.trim()) return
-
-    try {
-      await addUser(newUserName)
-      setNewUserName('')
-
-      // ユーザー一覧を再取得
-      const users = await getAllUsers()
-      setAllUsers(users)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'ユーザー追加エラー')
-    }
-  }
-
-  const handleClearData = async () => {
-    if (!confirm('全データを削除してリセットしますか？')) return
-
-    try {
-      await clearAllData()
-      // ページをリロードして再初期化
-      window.location.reload()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'データ削除エラー')
-    }
-  }
-
   if (loading) {
-    return <div className="p-8">初期化中...</div>
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="text-lg font-medium">初期化中...</div>
+          <div className="text-sm text-muted-foreground mt-2">データベースを準備しています</div>
+        </div>
+      </div>
+    )
   }
 
   if (error) {
-    return <div className="p-8 text-red-500">エラー: {error}</div>
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="text-lg font-medium text-destructive">エラーが発生しました</div>
+          <div className="text-sm text-muted-foreground mt-2">{error}</div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">麻雀アプリ - shadcn/ui テスト</h1>
-        <Button variant="destructive" size="sm" onClick={handleClearData}>
-          全データ削除
-        </Button>
+    <div className="flex flex-col h-screen">
+      {/* メインコンテンツエリア */}
+      <div className="flex-1">
+        <Tabs defaultValue="input" className="h-full gap-0">
+          <TabsContent value="input" className="overflow-hidden px-2 pt-1 pb-12">
+            <InputTab />
+          </TabsContent>
+
+          <TabsContent value="history" className="overflow-hidden px-2 pt-1 pb-12">
+            <HistoryTab />
+          </TabsContent>
+
+          <TabsContent value="analysis" className="overflow-hidden px-2 pt-1 pb-12">
+            <AnalysisTab />
+          </TabsContent>
+
+          <TabsContent value="settings" className="overflow-hidden px-2 pt-1 pb-12">
+            <SettingsTab />
+          </TabsContent>
+
+          {/* 下部固定タブナビゲーション */}
+          <div className="fixed bottom-0 left-0 right-0 border-t bg-background">
+            <TabsList className="grid w-full grid-cols-4 h-12 rounded-none">
+              <TabsTrigger value="input" className="flex flex-col gap-0 py-1">
+                <span className="text-base leading-none">✏️</span>
+                <span className="text-xs leading-none">新規入力</span>
+              </TabsTrigger>
+              <TabsTrigger value="history" className="flex flex-col gap-0 py-1">
+                <span className="text-base leading-none">📋</span>
+                <span className="text-xs leading-none">履歴</span>
+              </TabsTrigger>
+              <TabsTrigger value="analysis" className="flex flex-col gap-0 py-1">
+                <span className="text-base leading-none">📊</span>
+                <span className="text-xs leading-none">分析</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex flex-col gap-0 py-1">
+                <span className="text-base leading-none">⚙️</span>
+                <span className="text-xs leading-none">設定</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </Tabs>
       </div>
-
-      <Tabs defaultValue="db-test" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="db-test">DBテスト</TabsTrigger>
-          <TabsTrigger value="ui-test">UIテスト</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="db-test" className="space-y-4">
-          {/* メインユーザー表示 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>メインユーザー</CardTitle>
-              <CardDescription>アプリのメインユーザー情報</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {mainUser ? (
-                <div>
-                  <p>名前: {mainUser.name}</p>
-                  <p className="text-sm text-muted-foreground">ID: {mainUser.id}</p>
-                </div>
-              ) : (
-                <p className="text-muted-foreground">メインユーザーが見つかりません</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* ユーザー追加フォーム */}
-          <Card>
-            <CardHeader>
-              <CardTitle>新規ユーザー追加</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="ユーザー名を入力"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddUser()}
-                />
-                <Button onClick={handleAddUser}>追加</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 全ユーザー一覧 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>登録ユーザー一覧 ({allUsers.length}名)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {allUsers.map((user) => (
-                  <li key={user.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{user.name}</span>
-                      {user.isMainUser && (
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                          メイン
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">ID: {user.id}</p>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="ui-test" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>shadcn/ui コンポーネントテスト</CardTitle>
-              <CardDescription>追加したコンポーネントの動作確認</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-2">Button バリアント</h3>
-                <div className="flex gap-2 flex-wrap">
-                  <Button>Default</Button>
-                  <Button variant="secondary">Secondary</Button>
-                  <Button variant="destructive">Destructive</Button>
-                  <Button variant="outline">Outline</Button>
-                  <Button variant="ghost">Ghost</Button>
-                  <Button variant="link">Link</Button>
-                </div>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Input</h3>
-                <Input placeholder="テキスト入力..." />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   )
 }
