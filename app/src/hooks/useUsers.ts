@@ -1,23 +1,35 @@
 import { useState, useEffect } from 'react'
-import { getMainUser, getRegisteredUsers, addUser, deleteUser, updateUser } from '@/lib/db-utils'
+import {
+  getMainUser,
+  getRegisteredUsers,
+  getArchivedUsers,
+  addUser,
+  archiveUser,
+  restoreUser,
+  updateUser
+} from '@/lib/db-utils'
 import type { User } from '@/lib/db'
 
 /**
  * ユーザー一覧管理カスタムフック
- * メインユーザーと登録ユーザー一覧を取得・管理
+ * メインユーザー、アクティブユーザー、アーカイブ済みユーザーを管理
  */
 export function useUsers() {
   const [mainUser, setMainUser] = useState<User | null>(null)
-  const [users, setUsers] = useState<User[]>([])
+  const [activeUsers, setActiveUsers] = useState<User[]>([])
+  const [archivedUsers, setArchivedUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadUsers = async () => {
       try {
         const main = await getMainUser()
-        const registered = await getRegisteredUsers()
+        const active = await getRegisteredUsers()  // アクティブのみ
+        const archived = await getArchivedUsers()
+
         setMainUser(main ?? null)
-        setUsers(registered)
+        setActiveUsers(active)
+        setArchivedUsers(archived)
       } catch (error) {
         console.error('Failed to load users:', error)
       } finally {
@@ -35,7 +47,7 @@ export function useUsers() {
    */
   const addNewUser = async (name: string): Promise<User> => {
     const newUser = await addUser(name)
-    setUsers(prev => [...prev, newUser])
+    setActiveUsers(prev => [...prev, newUser])
     return newUser
   }
 
@@ -51,28 +63,52 @@ export function useUsers() {
     if (updatedUser.isMainUser) {
       setMainUser(updatedUser)
     } else {
-      // 登録ユーザーの場合
-      setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u))
+      // 登録ユーザーの場合（アクティブ or アーカイブ）
+      setActiveUsers(prev => prev.map(u => u.id === userId ? updatedUser : u))
+      setArchivedUsers(prev => prev.map(u => u.id === userId ? updatedUser : u))
     }
 
     return updatedUser
   }
 
   /**
-   * ユーザーを削除（メインユーザーは削除不可）
+   * ユーザーをアーカイブ（論理削除）
    * @param userId - ユーザーID
    */
-  const removeUser = async (userId: string): Promise<void> => {
-    await deleteUser(userId)
-    setUsers(prev => prev.filter(u => u.id !== userId))
+  const archiveUserAction = async (userId: string): Promise<void> => {
+    await archiveUser(userId)
+
+    // アクティブから削除、アーカイブに追加
+    const user = activeUsers.find(u => u.id === userId)
+    if (user) {
+      setActiveUsers(prev => prev.filter(u => u.id !== userId))
+      setArchivedUsers(prev => [...prev, { ...user, isArchived: true, archivedAt: new Date() }])
+    }
+  }
+
+  /**
+   * アーカイブ済みユーザーを復元
+   * @param userId - ユーザーID
+   */
+  const restoreUserAction = async (userId: string): Promise<void> => {
+    await restoreUser(userId)
+
+    // アーカイブから削除、アクティブに追加
+    const user = archivedUsers.find(u => u.id === userId)
+    if (user) {
+      setArchivedUsers(prev => prev.filter(u => u.id !== userId))
+      setActiveUsers(prev => [...prev, { ...user, isArchived: false, archivedAt: undefined }])
+    }
   }
 
   return {
     mainUser,
-    users,
+    activeUsers,      // 旧usersをactiveUsersに変更
+    archivedUsers,    // 新規追加
     loading,
     addNewUser,
     editUser,
-    removeUser,
+    archiveUser: archiveUserAction,  // 旧removeUserをarchiveUserに変更
+    restoreUser: restoreUserAction,  // 新規追加
   }
 }

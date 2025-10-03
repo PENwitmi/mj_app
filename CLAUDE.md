@@ -28,6 +28,40 @@ npm run lint
 npm run preview
 ```
 
+### Dev Server Startup (Claude Code)
+
+**重要**: Claude Codeで`npm run dev`を実行する際は、タイムアウト問題を回避するため専用のサブエージェント/コマンドを使用してください。
+
+**推奨方法**:
+
+1. **サブエージェント使用**:
+   ```
+   @agent-npm-run-dev dev serverを起動して
+   ```
+
+2. **スラッシュコマンド使用**:
+   ```
+   /run
+   ```
+
+**仕組み**:
+- screenセッションでdev serverを分離実行
+- Claude Codeの2分タイムアウトを回避
+- ポート5173で起動、バックグラウンド実行
+
+**セッション管理**:
+```bash
+# ログ確認
+screen -r dev-server
+
+# デタッチ (Ctrl+A → D)
+
+# サーバー停止
+screen -X -S dev-server quit
+```
+
+**理由**: Claude Codeの`run_in_background`機能はViteの起動を正しく検知できず、プロセスが途中で終了する問題があります。screenセッションを使用することで確実に起動できます。
+
 ## Architecture
 
 ### Data Model (4層構造)
@@ -46,6 +80,8 @@ User (登録ユーザー)
 
 **Key Entities:**
 - `User`: メインユーザー(固定ID: `main-user-fixed-id`)と登録ユーザー
+  - **アーカイブシステム**: isArchived/archivedAtで論理削除管理
+  - 物理削除は使用せず、データ整合性を確保
 - `Session`: 日付単位の麻雀記録。rate、umaValue、chipRate等の設定を保持
 - `Hanchan`: 個別ゲーム。半荘番号でソート
 - `PlayerResult`: 各プレイヤーの点数(±形式)、ウママーク、チップ数
@@ -66,6 +102,12 @@ User (登録ユーザー)
 
 **Key Functions:**
 - `initializeApp()`: メインユーザー初期化（固定IDで重複防止）
+- `archiveUser(userId)`: ユーザーアーカイブ（論理削除）
+- `restoreUser(userId)`: アーカイブ済みユーザー復元
+- `getActiveUsers()`: アクティブユーザーのみ取得
+- `getArchivedUsers()`: アーカイブ済みユーザー取得
+- `getRegisteredUsers()`: 登録ユーザー取得（アクティブのみ、メインユーザー除く）
+- `deleteUser()`: **非推奨** - 内部でarchiveUserを呼ぶ
 - `validateZeroSum(hanchanId)`: ゼロサム検証
 - `validateUmaMarks(hanchanId)`: ウママーク合計検証
 - `getSessionWithDetails(sessionId)`: セッション+半荘+プレイヤー結果を一括取得

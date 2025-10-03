@@ -1,6 +1,6 @@
 import { db, type User, type Session, type Hanchan, type PlayerResult, type UmaMark } from './db';
 import { logger } from './logger';
-import { DatabaseError, ValidationError } from './errors';
+import { DatabaseError, ValidationError, NotFoundError } from './errors';
 
 // ========================================
 // User Functions
@@ -45,11 +45,11 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 /**
- * 登録ユーザーを取得（メインユーザーを除く）
+ * 登録ユーザーを取得（アクティブのみ、メインユーザーを除く）
  */
 export async function getRegisteredUsers(): Promise<User[]> {
   const allUsers = await db.users.toArray();
-  return allUsers.filter(user => !user.isMainUser);
+  return allUsers.filter(user => !user.isMainUser && !user.isArchived);
 }
 
 /**
@@ -76,6 +76,7 @@ export async function addUser(name: string): Promise<User> {
       id: crypto.randomUUID(),
       name,
       isMainUser: false,
+      isArchived: false,
       createdAt: new Date()
     };
 
@@ -123,7 +124,7 @@ export async function updateUser(userId: string, name: string): Promise<User> {
     // ユーザー情報を取得
     const user = await db.users.get(userId);
     if (!user) {
-      const error = new NotFoundError('ユーザーが見つかりません', { userId });
+      const error = new NotFoundError('ユーザーが見つかりません', userId);
       logger.error(error.message, {
         context: 'db-utils.updateUser',
         error
@@ -160,54 +161,164 @@ export async function updateUser(userId: string, name: string): Promise<User> {
 }
 
 /**
- * ユーザーを削除（メインユーザーは削除不可）
+ * ユーザーをアーカイブ（論理削除）
+ * @param userId - アーカイブするユーザーID
  */
-export async function deleteUser(userId: string): Promise<void> {
+export async function archiveUser(userId: string): Promise<void> {
   try {
-    logger.debug('ユーザー削除開始', {
-      context: 'db-utils.deleteUser',
+    logger.debug('ユーザーアーカイブ開始', {
+      context: 'db-utils.archiveUser',
       data: { userId }
     });
 
     // ユーザー情報を取得
     const user = await db.users.get(userId);
     if (!user) {
-      const error = new NotFoundError('ユーザーが見つかりません', { userId });
+      const error = new NotFoundError('ユーザーが見つかりません', userId);
       logger.error(error.message, {
-        context: 'db-utils.deleteUser',
+        context: 'db-utils.archiveUser',
         error
       });
       throw error;
     }
 
-    // メインユーザーの削除を防止
+    // メインユーザーのアーカイブを防止
     if (user.isMainUser) {
-      const error = new ValidationError('メインユーザーは削除できません', 'userId');
+      const error = new ValidationError('メインユーザーはアーカイブできません', 'userId');
       logger.error(error.message, {
-        context: 'db-utils.deleteUser',
+        context: 'db-utils.archiveUser',
         error,
         data: { userId }
       });
       throw error;
     }
 
-    await db.users.delete(userId);
+    // アーカイブフラグを設定
+    await db.users.update(userId, {
+      isArchived: true,
+      archivedAt: new Date()
+    });
 
-    logger.info('ユーザー削除成功', {
-      context: 'db-utils.deleteUser',
+    logger.info('ユーザーアーカイブ成功', {
+      context: 'db-utils.archiveUser',
       data: { userId, userName: user.name }
     });
   } catch (err) {
     if (err instanceof ValidationError || err instanceof NotFoundError) {
       throw err;
     }
-    const error = new DatabaseError('ユーザーの削除に失敗しました', { originalError: err });
+    const error = new DatabaseError('ユーザーのアーカイブに失敗しました', { originalError: err });
     logger.error(error.message, {
-      context: 'db-utils.deleteUser',
+      context: 'db-utils.archiveUser',
       error
     });
     throw error;
   }
+}
+
+/**
+ * アーカイブ済みユーザーを復元
+ * @param userId - 復元するユーザーID
+ */
+export async function restoreUser(userId: string): Promise<void> {
+  try {
+    logger.debug('ユーザー復元開始', {
+      context: 'db-utils.restoreUser',
+      data: { userId }
+    });
+
+    const user = await db.users.get(userId);
+    if (!user) {
+      const error = new NotFoundError('ユーザーが見つかりません', userId);
+      logger.error(error.message, {
+        context: 'db-utils.restoreUser',
+        error
+      });
+      throw error;
+    }
+
+    if (!user.isArchived) {
+      const error = new ValidationError('ユーザーは既にアクティブです', 'userId');
+      logger.error(error.message, {
+        context: 'db-utils.restoreUser',
+        error,
+        data: { userId }
+      });
+      throw error;
+    }
+
+    await db.users.update(userId, {
+      isArchived: false,
+      archivedAt: undefined
+    });
+
+    logger.info('ユーザー復元成功', {
+      context: 'db-utils.restoreUser',
+      data: { userId, userName: user.name }
+    });
+  } catch (err) {
+    if (err instanceof ValidationError || err instanceof NotFoundError) {
+      throw err;
+    }
+    const error = new DatabaseError('ユーザーの復元に失敗しました', { originalError: err });
+    logger.error(error.message, {
+      context: 'db-utils.restoreUser',
+      error
+    });
+    throw error;
+  }
+}
+
+/**
+ * アクティブユーザーのみ取得
+ */
+export async function getActiveUsers(): Promise<User[]> {
+  try {
+    const allUsers = await db.users.toArray();
+    return allUsers.filter(u => !u.isArchived);
+  } catch (err) {
+    const error = new DatabaseError('アクティブユーザーの取得に失敗しました', {
+      originalError: err
+    });
+    logger.error(error.message, {
+      context: 'db-utils.getActiveUsers',
+      error
+    });
+    throw error;
+  }
+}
+
+/**
+ * アーカイブ済みユーザーのみ取得
+ */
+export async function getArchivedUsers(): Promise<User[]> {
+  try {
+    const allUsers = await db.users.toArray();
+    return allUsers.filter(u => u.isArchived);
+  } catch (err) {
+    const error = new DatabaseError('アーカイブ済みユーザーの取得に失敗しました', {
+      originalError: err
+    });
+    logger.error(error.message, {
+      context: 'db-utils.getArchivedUsers',
+      error
+    });
+    throw error;
+  }
+}
+
+/**
+ * @deprecated archiveUserを使用してください
+ * ユーザーを削除（非推奨）
+ */
+export async function deleteUser(userId: string): Promise<void> {
+  logger.warn('deleteUserは非推奨です。archiveUserを使用してください', {
+    context: 'db-utils.deleteUser',
+    data: { userId }
+  });
+
+  // 内部的にarchiveUserを呼び出す
+  return archiveUser(userId);
 }
 
 // ========================================

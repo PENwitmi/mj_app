@@ -17,19 +17,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import { NewPlayerDialog } from '@/components/NewPlayerDialog'
 import type { UmaRule, User } from '@/lib/db'
 import { getDefaultUmaRule, setDefaultUmaRule } from '@/lib/utils'
 
 interface SettingsTabProps {
   mainUser: User | null
-  users: User[]
+  activeUsers: User[]
+  archivedUsers: User[]
   addNewUser: (name: string) => Promise<User>
   editUser: (userId: string, name: string) => Promise<User>
-  removeUser: (userId: string) => Promise<void>
+  archiveUser: (userId: string) => Promise<void>
+  restoreUser: (userId: string) => Promise<void>
 }
 
-export function SettingsTab({ mainUser, users, addNewUser, editUser, removeUser }: SettingsTabProps) {
+export function SettingsTab({ mainUser, activeUsers, archivedUsers, addNewUser, editUser, archiveUser, restoreUser }: SettingsTabProps) {
   const [defaultUmaRule, setDefaultUmaRuleState] = useState<UmaRule>('standard')
   const [userManagementOpen, setUserManagementOpen] = useState(false)
   const [newPlayerDialogOpen, setNewPlayerDialogOpen] = useState(false)
@@ -49,15 +57,27 @@ export function SettingsTab({ mainUser, users, addNewUser, editUser, removeUser 
     setDefaultUmaRule(newRule)
   }
 
-  // ユーザー削除
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`「${userName}」を削除してもよろしいですか？\nこの操作は取り消せません。`)) {
+  // ユーザーアーカイブ
+  const handleArchiveUser = async (userId: string, userName: string) => {
+    if (!confirm(
+      `「${userName}」をアーカイブしますか？\n` +
+      `アーカイブ後も過去の記録は保持され、いつでも復元できます。`
+    )) {
       return
     }
     try {
-      await removeUser(userId)
+      await archiveUser(userId)
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'ユーザーの削除に失敗しました')
+      alert(error instanceof Error ? error.message : 'ユーザーのアーカイブに失敗しました')
+    }
+  }
+
+  // ユーザー復元
+  const handleRestoreUser = async (userId: string) => {
+    try {
+      await restoreUser(userId)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'ユーザーの復元に失敗しました')
     }
   }
 
@@ -204,11 +224,11 @@ export function SettingsTab({ mainUser, users, addNewUser, editUser, removeUser 
               </div>
             )}
 
-            {/* 登録済みユーザー */}
-            {users.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">登録ユーザー</div>
-                {users.map(user => (
+            {/* アクティブユーザーセクション */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">登録ユーザー</div>
+              {activeUsers.length > 0 ? (
+                activeUsers.map(user => (
                   <div key={user.id} className="border rounded-lg p-3 bg-gray-50">
                     <div className="flex items-center justify-between">
                       <div className="font-medium">{user.name}</div>
@@ -222,22 +242,58 @@ export function SettingsTab({ mainUser, users, addNewUser, editUser, removeUser 
                         </Button>
                         <Button
                           size="sm"
-                          className="bg-red-500 hover:bg-red-600 text-white"
-                          onClick={() => handleDeleteUser(user.id, user.name)}
+                          className="bg-orange-500 hover:bg-orange-600 text-white"
+                          onClick={() => handleArchiveUser(user.id, user.name)}
                         >
-                          削除
+                          アーカイブ
                         </Button>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground text-center py-4">
+                  登録ユーザーはまだいません
+                </div>
+              )}
+            </div>
 
-            {users.length === 0 && (
-              <div className="text-sm text-muted-foreground text-center py-4">
-                登録ユーザーはまだいません
-              </div>
+            {/* アーカイブ済みユーザーセクション（アコーディオン） */}
+            {archivedUsers.length > 0 && (
+              <Accordion type="single" collapsible className="mt-6">
+                <AccordionItem value="archived-users" className="border-0">
+                  <AccordionTrigger className="text-sm font-medium text-muted-foreground hover:no-underline py-2">
+                    <div className="flex items-center gap-2">
+                      <span>🗄️ アーカイブ済みユーザー</span>
+                      <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                        {archivedUsers.length}
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-2 pt-2">
+                    {archivedUsers.map(user => (
+                      <div key={user.id} className="border rounded-lg p-3 bg-gray-100/50">
+                        <div className="flex items-center justify-between">
+                          <div className="opacity-60">
+                            <div className="font-medium text-gray-600">{user.name}</div>
+                            <div className="text-xs text-gray-500">
+                              {user.archivedAt && `アーカイブ: ${new Date(user.archivedAt).toLocaleDateString()}`}
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-black"
+                            onClick={() => handleRestoreUser(user.id)}
+                          >
+                            復元
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             )}
 
             {/* 新規追加ボタン */}
@@ -257,7 +313,7 @@ export function SettingsTab({ mainUser, users, addNewUser, editUser, removeUser 
         open={newPlayerDialogOpen}
         onOpenChange={setNewPlayerDialogOpen}
         onSave={handleAddUser}
-        existingUsers={[...(mainUser ? [mainUser] : []), ...users]}
+        existingUsers={[...(mainUser ? [mainUser] : []), ...activeUsers]}
       />
 
       {/* ユーザー名編集Dialog */}

@@ -13,7 +13,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
 
   // ユーザー管理を一箇所で行い、全タブで共有
-  const { mainUser, users, loading: usersLoading, addNewUser, editUser, removeUser } = useUsers()
+  const { mainUser, activeUsers, archivedUsers, addNewUser, editUser, archiveUser, restoreUser } = useUsers()
 
   useEffect(() => {
     const init = async () => {
@@ -60,7 +60,7 @@ function App() {
           <TabsContent value="input" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
             <InputTab
               mainUser={mainUser}
-              users={users}
+              users={activeUsers}
               addNewUser={addNewUser}
             />
           </TabsContent>
@@ -76,10 +76,12 @@ function App() {
           <TabsContent value="settings" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
             <SettingsTab
               mainUser={mainUser}
-              users={users}
+              activeUsers={activeUsers}
+              archivedUsers={archivedUsers}
               addNewUser={addNewUser}
               editUser={editUser}
-              removeUser={removeUser}
+              archiveUser={archiveUser}
+              restoreUser={restoreUser}
             />
           </TabsContent>
 

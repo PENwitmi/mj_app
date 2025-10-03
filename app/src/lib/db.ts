@@ -16,6 +16,8 @@ export interface User {
   id: string;                // UUID
   name: string;              // ユーザー名
   isMainUser: boolean;       // メインユーザーフラグ
+  isArchived: boolean;       // アーカイブフラグ
+  archivedAt?: Date;         // アーカイブ日時（オプショナル）
   createdAt: Date;           // 登録日時
 }
 
@@ -92,6 +94,7 @@ export async function initializeMainUser(): Promise<User> {
     id: MAIN_USER_ID,
     name: '自分',
     isMainUser: true,
+    isArchived: false,
     createdAt: new Date()
   };
 

@@ -1,6 +1,6 @@
 # 📊 麻雀アプリ - マスターステータスダッシュボード
 
-**最終更新**: 2025-10-04 07:10
+**最終更新**: 2025-10-04 08:05
 
 ---
 
@@ -9,18 +9,18 @@
 | 項目 | 状態 |
 |------|------|
 | **開始日** | 2025-10-03 00:17 |
-| **総フェーズ数** | 2 (完了) |
-| **総ドキュメント数** | 11 (設計9 + 実装2) |
-| **総ファイル数** | 25ファイル（src配下） |
-| **総コード行数** | 2,467行 (TypeScript/TSX) |
-| **完了タスク** | Phase 1: 6/6, Phase 2: 8/8 |
-| **現在のGitコミット** | `eae3afe` - UI実装Phase 2完了 |
+| **総フェーズ数** | 2.5 (完了) |
+| **総ドキュメント数** | 12 (設計9 + 実装3) |
+| **総ファイル数** | 26ファイル（src配下） |
+| **総コード行数** | 2,620行 (TypeScript/TSX) |
+| **完了タスク** | Phase 1: 6/6, Phase 2: 8/8, Phase 2.5: 5/5 |
+| **現在のGitコミット** | 最新コミット準備中 |
 
 ---
 
 ## 🚀 現在進行中のプロジェクト
 
-**現在、進行中のプロジェクトはありません。Phase 2まで完了済み。**
+**現在、進行中のプロジェクトはありません。Phase 2.5まで完了済み。**
 
 次のステップ候補:
 - Phase 3: DB保存機能実装（InputTabからSessionを実際にDBに保存）
@@ -30,6 +30,64 @@
 ---
 
 ## ✅ 直近完了プロジェクト（2週間以内）
+
+### Phase 2.5: ユーザーアーカイブシステム実装（2025-10-04 07:30 - 08:05）
+
+**期間**: 約35分
+**ステータス**: ✅ 完了
+**Gitコミット**: 次回コミット予定
+
+#### 完了タスク
+
+1. ✅ **データモデル拡張**
+   - User型にisArchived/archivedAtフィールド追加
+   - 既存データとの後方互換性確保（マイグレーション不要）
+
+2. ✅ **DB関数実装**
+   - archiveUser() - ユーザーアーカイブ（論理削除）
+   - restoreUser() - アーカイブ済みユーザー復元
+   - getActiveUsers() - アクティブユーザー取得
+   - getArchivedUsers() - アーカイブ済みユーザー取得
+   - getRegisteredUsers() 更新 - アクティブユーザーのみ返す
+   - deleteUser() deprecated化
+
+3. ✅ **useUsersフック更新**
+   - activeUsers/archivedUsers分離
+   - archiveUser/restoreUserアクション追加
+
+4. ✅ **UI実装**
+   - SettingsTab: アーカイブボタン追加（オレンジ）
+   - アーカイブ済みユーザーをアコーディオンで折りたたみ表示
+   - 復元ボタン実装（文字色黒で押しやすく）
+   - App.tsx: activeUsers/archivedUsers props連携
+
+5. ✅ **動作テスト**
+   - TypeScriptコンパイル成功
+   - ビルド成功
+   - dev server起動確認
+
+#### 成果物
+
+**更新ファイル**:
+- `app/src/lib/db.ts` - User型拡張
+- `app/src/lib/db-utils.ts` - アーカイブ関数追加（+153行）
+- `app/src/hooks/useUsers.ts` - 完全リライト（115行）
+- `app/src/components/tabs/SettingsTab.tsx` - UI更新
+- `app/src/App.tsx` - props更新
+- `app/src/components/ui/accordion.tsx` - 新規追加
+
+**技術的ポイント**:
+- ソフトデリート方式採用でデータ整合性確保
+- PlayerResultのuserIdが孤立参照にならない
+- 誤削除からの復旧可能
+- アーカイブ済みユーザーは選択肢に表示されない
+
+#### 参照ドキュメント
+
+- 📁 `project-docs/2025-10-04-phase2.5-user-archive-system/`
+  - `01-USER_ARCHIVE_SYSTEM_IMPLEMENTATION_PLAN.md`
+
+---
 
 ### Phase 2: UI実装フル完成（2025-10-03 03:19 - 2025-10-04 07:10）
 
