@@ -70,7 +70,7 @@ function App() {
           </TabsContent>
 
           <TabsContent value="history" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
-            <HistoryTab />
+            <HistoryTab mainUser={mainUser} />
           </TabsContent>
 
           <TabsContent value="analysis" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>

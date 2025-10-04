@@ -599,7 +599,7 @@ export async function saveSession(data: SessionSaveData): Promise<string> {
     const session: Session = {
       id: sessionId,
       date: data.date,
-      mode: data.mode as '4-player' | '3-player',
+      mode: data.mode === 'four-player' ? '4-player' : '3-player',
       rate: data.rate,
       umaValue: data.umaValue,
       chipRate: data.chipRate,
@@ -673,6 +673,59 @@ export async function saveSession(data: SessionSaveData): Promise<string> {
     });
     logger.error(error.message, {
       context: 'db-utils.saveSession',
+      error
+    });
+    throw error;
+  }
+}
+
+/**
+ * セッションを削除（カスケード削除: Session → Hanchan → PlayerResult）
+ * @param sessionId セッションID
+ */
+export async function deleteSession(sessionId: string): Promise<void> {
+  try {
+    logger.info('セッション削除開始', {
+      context: 'db-utils.deleteSession',
+      data: { sessionId }
+    });
+
+    // Dexieのtransactionで原子性を保証
+    await db.transaction('rw', [db.sessions, db.hanchans, db.playerResults], async () => {
+      // 1. 関連する半荘を取得
+      const hanchans = await db.hanchans
+        .where('sessionId')
+        .equals(sessionId)
+        .toArray();
+
+      // 2. 各半荘のPlayerResultを削除
+      for (const hanchan of hanchans) {
+        await db.playerResults
+          .where('hanchanId')
+          .equals(hanchan.id)
+          .delete();
+      }
+
+      // 3. 半荘を削除
+      await db.hanchans
+        .where('sessionId')
+        .equals(sessionId)
+        .delete();
+
+      // 4. セッションを削除
+      await db.sessions.delete(sessionId);
+    });
+
+    logger.info('セッション削除成功', {
+      context: 'db-utils.deleteSession',
+      data: { sessionId }
+    });
+  } catch (err) {
+    const error = new DatabaseError('セッションの削除に失敗しました', {
+      originalError: err
+    });
+    logger.error(error.message, {
+      context: 'db-utils.deleteSession',
       error
     });
     throw error;

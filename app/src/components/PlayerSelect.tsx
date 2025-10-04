@@ -80,7 +80,7 @@ export function PlayerSelect({
   return (
     <>
       <Select value={currentValue} onValueChange={handleValueChange}>
-        <SelectTrigger className="w-full">
+        <SelectTrigger className="w-full [&>svg]:hidden">
           <SelectValue placeholder="プレイヤーを選択" />
         </SelectTrigger>
         <SelectContent>

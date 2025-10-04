@@ -397,19 +397,8 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
       {/* セッション設定カード */}
       <Card className="py-0 shrink-0">
         <CardContent className="p-3 pb-2">
-          {/* 1行目: モード、モード変更ボタン、日付 */}
+          {/* 1行目: 日付、モード変更ボタン、保存ボタン */}
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold">
-              {selectedMode === '4-player' ? '4人打ち' : '3人打ち'}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 text-xs px-1.5"
-              onClick={() => setSelectedMode(null)}
-            >
-              モード変更
-            </Button>
             <div className="flex items-center gap-0.5 flex-1">
               <span className="text-muted-foreground text-xs">📅</span>
               <Input
@@ -419,6 +408,20 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
                 className="h-7 text-sm"
               />
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 text-xs px-1.5"
+              onClick={() => setSelectedMode(null)}
+            >
+              モード変更
+            </Button>
+            <Button
+              className="flex-1 bg-green-600 hover:bg-green-700 h-7 text-sm"
+              onClick={handleSave}
+            >
+              保存
+            </Button>
           </div>
 
           {/* 2行目: レート、ウマ、チップ */}
@@ -458,13 +461,13 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
       </Card>
 
       {/* 点数入力表（スクロール可能） */}
-      <Card className="py-0 h-[calc(100vh-390px)] overflow-hidden shrink-0">
+      <Card className="py-0 h-[calc(100vh-375px)] overflow-hidden shrink-0">
         <CardContent className="p-2 flex flex-col h-full">
           <div className="flex-1 overflow-auto">
             <table className="w-full border-collapse text-xs table-fixed">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b">
-                  <th className="p-0.5 text-center w-7 text-muted-foreground text-[10px]">#</th>
+                  <th className="p-0.5 text-center w-4 text-muted-foreground text-[10px]">#</th>
                   {hanchans[0]?.players.map((player, idx) => (
                     <th key={idx} className="p-1">
                       {idx === 0 ? (
@@ -624,20 +627,10 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
           <CardContent className="p-2">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-xs table-fixed">
-                <thead>
-                  <tr className="border-b">
-                    <th className="p-0.5 text-center w-7 text-muted-foreground text-[10px]">#</th>
-                    {hanchans[0]?.players.map((player, idx) => (
-                      <th key={idx} className="p-1 text-center font-semibold">
-                        {player.playerName}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="border-t-2 border-primary text-xs">
+                <tbody className="text-xs">
                   {/* 小計行 */}
                   <tr className="bg-muted/50">
-                    <td className="p-0.5 font-medium text-center text-[10px]">小計</td>
+                    <td className="p-0.5 font-medium text-center text-[10px] w-4">小計</td>
                     {hanchans[0]?.players.map((_, playerIdx) => {
                       const totals = calculatePlayerTotals(playerIdx, hanchans, settings)
                       const sign = totals.subtotal >= 0 ? '+' : ''
@@ -657,7 +650,7 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
                   </tr>
                   {/* チップ入力行 */}
                   <tr>
-                    <td className="p-0.5 font-medium text-center text-[10px]">CP</td>
+                    <td className="p-0.5 font-medium text-center text-[10px] w-4">CP</td>
                     {hanchans[0]?.players.map((player, playerIdx) => (
                       <td key={playerIdx} className="p-1">
                         <Input
@@ -680,7 +673,7 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
                   </tr>
                   {/* 収支行 */}
                   <tr className="bg-muted/30">
-                    <td className="p-0.5 font-medium text-center text-[10px]">収支</td>
+                    <td className="p-0.5 font-medium text-center text-[10px] w-4">収支</td>
                     {hanchans[0]?.players.map((_, playerIdx) => {
                       const totals = calculatePlayerTotals(playerIdx, hanchans, settings)
                       const sign = totals.payout >= 0 ? '+' : ''
@@ -694,7 +687,7 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
                   </tr>
                   {/* 場代入力行 */}
                   <tr>
-                    <td className="p-0.5 font-medium text-center text-[10px]">場代</td>
+                    <td className="p-0.5 font-medium text-center text-[10px] w-4">場代</td>
                     {hanchans[0]?.players.map((player, playerIdx) => (
                       <td key={playerIdx} className="p-1">
                         <Input
@@ -717,7 +710,7 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
                   </tr>
                   {/* 最終収支行 */}
                   <tr className="bg-primary/10 border-t">
-                    <td className="p-0.5 font-bold text-center text-[10px]">最終</td>
+                    <td className="p-0.5 font-bold text-center text-[10px] w-4">最終</td>
                     {hanchans[0]?.players.map((_, playerIdx) => {
                       const totals = calculatePlayerTotals(playerIdx, hanchans, settings)
                       const sign = totals.finalPayout >= 0 ? '+' : ''
@@ -743,25 +736,6 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
             </div>
           </CardContent>
         </Card>
-
-        {/* 保存ボタン */}
-        <div className="sticky bottom-12 left-0 right-0 p-4 bg-white border-t">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={handleReset}
-            >
-              リセット
-            </Button>
-            <Button
-              className="flex-1 bg-green-600 hover:bg-green-700"
-              onClick={handleSave}
-            >
-              保存して履歴へ
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   )
