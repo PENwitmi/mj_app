@@ -9,9 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { toast } from 'sonner'
 import type { GameMode, UmaMark, UmaRule, User } from '@/lib/db'
 import { getDefaultUmaRule } from '@/lib/utils'
 import { PlayerSelect } from '@/components/PlayerSelect'
+import { saveSession, type SessionSaveData } from '@/lib/db-utils'
 
 // セッション設定の型定義
 interface SessionSettings {
@@ -213,9 +215,10 @@ interface InputTabProps {
   mainUser: User | null
   users: User[]
   addNewUser: (name: string) => Promise<User>
+  onSaveSuccess?: () => void
 }
 
-export function InputTab({ mainUser, users, addNewUser }: InputTabProps) {
+export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTabProps) {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null)
   const [settings, setSettings] = useState<SessionSettings>(DEFAULT_SETTINGS)
   const [hanchans, setHanchans] = useState<Hanchan[]>([])
@@ -299,6 +302,64 @@ export function InputTab({ mainUser, users, addNewUser }: InputTabProps) {
         ),
       }))
     )
+  }
+
+  // セッション保存処理
+  const handleSave = async () => {
+    try {
+      // バリデーション：最低1半荘は入力が必要
+      const hasData = hanchans.some(h =>
+        h.players.some(p => !p.isSpectator && p.score !== null)
+      )
+      if (!hasData) {
+        toast.error('点数が入力されていません')
+        return
+      }
+
+      // セッションデータを作成
+      const saveData: SessionSaveData = {
+        date: settings.date,
+        mode: selectedMode === '4-player' ? 'four-player' : 'three-player',
+        rate: settings.rate,
+        umaValue: settings.umaValue,
+        chipRate: settings.chipRate,
+        umaRule: settings.umaRule === 'standard' ? 'standard' : 'second-minus',
+        hanchans: hanchans.map(h => ({
+          hanchanNumber: h.hanchanNumber,
+          players: h.players.map(p => ({
+            playerName: p.playerName,
+            userId: p.userId,
+            score: p.score ?? 0,
+            umaMark: p.umaMark,
+            chips: p.chips,
+            parlorFee: p.parlorFee,
+            isSpectator: p.isSpectator
+          }))
+        }))
+      }
+
+      // DB保存
+      await saveSession(saveData)
+
+      // 成功通知
+      toast.success('セッションを保存しました')
+
+      // リセット
+      handleReset()
+
+      // 履歴タブへ遷移
+      onSaveSuccess?.()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '保存に失敗しました')
+    }
+  }
+
+  // リセット処理
+  const handleReset = () => {
+    setSelectedMode(null)
+    setSettings(DEFAULT_SETTINGS)
+    setHanchans([])
+    setPlayerCount(0)
   }
 
   // モード未選択時は選択画面を表示
@@ -682,6 +743,25 @@ export function InputTab({ mainUser, users, addNewUser }: InputTabProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* 保存ボタン */}
+        <div className="sticky bottom-12 left-0 right-0 p-4 bg-white border-t">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={handleReset}
+            >
+              リセット
+            </Button>
+            <Button
+              className="flex-1 bg-green-600 hover:bg-green-700"
+              onClick={handleSave}
+            >
+              保存して履歴へ
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   )

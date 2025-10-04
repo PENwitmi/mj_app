@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { initializeApp } from './lib/db'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Toaster } from '@/components/ui/sonner'
 import { InputTab } from '@/components/tabs/InputTab'
 import { HistoryTab } from '@/components/tabs/HistoryTab'
 import { AnalysisTab } from '@/components/tabs/AnalysisTab'
@@ -11,6 +12,7 @@ import { useUsers } from '@/hooks/useUsers'
 function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('input')
 
   // ユーザー管理を一箇所で行い、全タブで共有
   const { mainUser, activeUsers, archivedUsers, addNewUser, editUser, archiveUser, restoreUser } = useUsers()
@@ -54,14 +56,16 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen">
+      <Toaster />
       {/* メインコンテンツエリア */}
       <div className="flex-1">
-        <Tabs defaultValue="input" className="h-full gap-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full gap-0">
           <TabsContent value="input" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
             <InputTab
               mainUser={mainUser}
               users={activeUsers}
               addNewUser={addNewUser}
+              onSaveSuccess={() => setActiveTab('history')}
             />
           </TabsContent>
 
