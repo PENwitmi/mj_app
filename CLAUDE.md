@@ -108,9 +108,13 @@ User (登録ユーザー)
 - `getArchivedUsers()`: アーカイブ済みユーザー取得
 - `getRegisteredUsers()`: 登録ユーザー取得（アクティブのみ、メインユーザー除く）
 - `deleteUser()`: **非推奨** - 内部でarchiveUserを呼ぶ
+- `saveSession(data)`: セッション保存（Session + Hanchan + PlayerResult一括作成）
+- `saveSessionWithSummary(data, mainUserId)`: セッション保存＋サマリー事前計算（パフォーマンス最適化版）
+- `deleteSession(sessionId)`: セッション削除（カスケード削除）
 - `validateZeroSum(hanchanId)`: ゼロサム検証
 - `validateUmaMarks(hanchanId)`: ウママーク合計検証
 - `getSessionWithDetails(sessionId)`: セッション+半荘+プレイヤー結果を一括取得
+- `calculateSessionSummary(sessionId, mainUserId)`: セッションサマリー計算
 
 ### Error Handling & Logging
 
@@ -154,13 +158,25 @@ src/
 ├── lib/
 │   ├── db.ts              # Dexieスキーマ定義
 │   ├── db-utils.ts        # DB操作ヘルパー
+│   ├── session-utils.ts   # セッション計算・保存ロジック
 │   ├── logger.ts          # 統一ロガー
 │   ├── errors.ts          # カスタムエラークラス
 │   └── utils.ts           # ユーティリティ
 ├── components/
-│   └── ErrorBoundary.tsx  # エラーバウンダリ
-├── hooks/                 # カスタムフック (未実装)
-├── App.tsx                # ルートコンポーネント (現在はDB テスト用)
+│   ├── tabs/
+│   │   ├── InputTab.tsx   # 新規入力タブ
+│   │   ├── HistoryTab.tsx # 履歴タブ
+│   │   ├── AnalysisTab.tsx # 分析タブ（プレースホルダー）
+│   │   └── SettingsTab.tsx # 設定タブ
+│   ├── SessionDetailDialog.tsx # セッション詳細ダイアログ
+│   ├── PlayerSelect.tsx   # プレイヤー選択コンポーネント
+│   ├── NewPlayerDialog.tsx # 新規プレイヤー登録ダイアログ
+│   ├── ErrorBoundary.tsx  # エラーバウンダリ
+│   └── ui/                # shadcn/uiコンポーネント
+├── hooks/
+│   ├── useUsers.ts        # ユーザー管理フック
+│   └── useSessions.ts     # セッション管理フック
+├── App.tsx                # ルートコンポーネント（タブレイアウト）
 └── main.tsx               # エントリーポイント
 ```
 
@@ -199,19 +215,37 @@ src/
 
 ## Development Workflow
 
-1. **DB層の実装完了** (Phase 1完了)
-2. **次のステップ**: UIコンポーネント実装
-   - 新規入力タブ
-   - 履歴タブ
-   - 分析タブ
-   - 設定タブ
+**完了済み:**
+1. ✅ DB層実装 (Phase 1)
+2. ✅ UIコンポーネント実装 (Phase 2)
+   - 新規入力タブ（InputTab）
+   - 設定タブ（SettingsTab）
+3. ✅ ユーザーアーカイブシステム (Phase 2.5)
+4. ✅ DB保存機能 (Phase 3)
+5. ✅ 履歴タブ基本機能 (Phase 4 Stage 1-3)
+   - セッション一覧・詳細表示
+   - 削除機能
+   - パフォーマンス最適化（サマリー事前計算）
+
+**次のステップ:**
+- Phase 4 Stage 4-5: 編集機能、UI/UX改善
+- Phase 5: 分析タブ実装
+- Phase 6: Capacitor統合（iOS/Androidアプリ化）
 
 ## Documentation
 
 詳細な設計・仕様は `project-docs/` 参照:
 - `2025-10-03-initial-discussion/`: 初期設計・要件定義
-- `2025-10-03-phase1-basic-implementation/`: 実装フェーズ1
+- `2025-10-03-phase1-basic-implementation/`: Phase 1実装ドキュメント
+- `2025-10-03-phase2-ui-implementation/`: Phase 2 UI実装ドキュメント
+- `2025-10-04-phase2.5-user-archive-system/`: Phase 2.5アーカイブシステム
+- `2025-10-04-phase4-history-tab/`: Phase 4履歴タブ実装ドキュメント
 
 **Key Docs:**
 - `09-DATA_MODEL_DESIGN.md`: データモデル詳細
 - `01-DEBUG_ERROR_HANDLING_STRATEGY.md`: エラーハンドリング方針
+- `03-PLAYER_ORDER_FIX.md`: プレイヤー列順修正
+- `04-SUMMARY_PRE_CALCULATION.md`: サマリー事前計算（パフォーマンス最適化）
+
+**進捗管理:**
+- `MASTER_STATUS_DASHBOARD.md`: プロジェクト全体の進捗状況

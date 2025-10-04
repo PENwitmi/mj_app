@@ -21,6 +21,23 @@ export interface User {
   createdAt: Date;           // 登録日時
 }
 
+// セッションサマリー（事前計算データ）
+export interface SessionSummary {
+  sessionId: string;
+  date: string;
+  mode: GameMode;
+  hanchanCount: number;      // 入力済み半荘数
+  totalPayout: number;       // 最終収支合計
+  totalChips: number;        // チップ合計
+  averageRank: number;       // 平均着順
+  rankCounts: {
+    first: number;
+    second: number;
+    third: number;
+    fourth?: number;         // 3人打ちの場合はundefined
+  };
+}
+
 export interface Session {
   id: string;                // UUID
   date: string;              // YYYY-MM-DD形式
@@ -30,6 +47,7 @@ export interface Session {
   chipRate: number;          // チップレート（デフォルト: 100）
   parlorFee: number;         // 場代（デフォルト: 0）
   umaRule: UmaRule;          // 'standard' | 'second-minus'
+  summary?: SessionSummary;  // 事前計算されたサマリー（パフォーマンス最適化）
   createdAt: Date;           // 作成日時
   updatedAt: Date;           // 更新日時
 }
@@ -51,6 +69,7 @@ export interface PlayerResult {
   umaMark: UmaMark;          // ウママーク
   isSpectator: boolean;      // 見学フラグ
   chips: number;             // チップ枚数（セッション終了後に入力）
+  position: number;          // 列番号（0, 1, 2, 3） - InputTabでの列順を保持
   createdAt: Date;           // 作成日時
 }
 
@@ -65,7 +84,16 @@ export const db = new Dexie('MahjongDB') as Dexie & {
   playerResults: EntityTable<PlayerResult, 'id'>;
 };
 
+// Version 1: Initial schema
 db.version(1).stores({
+  users: 'id, name, createdAt',
+  sessions: 'id, date, mode, createdAt, updatedAt',
+  hanchans: 'id, sessionId, hanchanNumber, createdAt',
+  playerResults: 'id, hanchanId, userId, playerName, createdAt'
+});
+
+// Version 2: Added Session.summary for performance optimization
+db.version(2).stores({
   users: 'id, name, createdAt',
   sessions: 'id, date, mode, createdAt, updatedAt',
   hanchans: 'id, sessionId, hanchanNumber, createdAt',

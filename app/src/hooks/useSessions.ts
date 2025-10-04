@@ -30,10 +30,24 @@ export function useSessions(mainUserId: string) {
         setLoading(true)
         setError(null)
 
-        // 各セッションのサマリーを並列計算
+        console.log(`[DEBUG] 📋 履歴タブ: セッション読み込み開始 (全${allSessions.length}件)`)
+        const startTime = performance.now()
+
+        let cachedCount = 0
+        let calculatedCount = 0
+
+        // 各セッションのサマリーを取得（保存済みがあればそれを使用、なければ計算）
         const sessionsWithSummary = await Promise.all(
           allSessions.map(async (session: Session) => {
             try {
+              // 保存済みサマリーがあればそれを使用（パフォーマンス最適化）
+              if (session.summary) {
+                cachedCount++
+                return { session, summary: session.summary }
+              }
+
+              // 保存済みサマリーがない場合は計算（後方互換性）
+              calculatedCount++
               const summary = await calculateSessionSummary(session.id, mainUserId)
               return { session, summary }
             } catch (err) {
@@ -64,6 +78,15 @@ export function useSessions(mainUserId: string) {
         sessionsWithSummary.sort((a: SessionWithSummary, b: SessionWithSummary) =>
           b.session.date.localeCompare(a.session.date)
         )
+
+        const totalTime = performance.now() - startTime
+
+        console.log(`[DEBUG] ✅ 履歴タブ: 読み込み完了 (${totalTime.toFixed(1)}ms)`, {
+          total: allSessions.length,
+          cached: cachedCount,
+          calculated: calculatedCount,
+          performance: cachedCount > 0 ? '🚀 キャッシュ利用' : '⚠️ 全計算'
+        })
 
         setSessions(sessionsWithSummary)
       } catch (err) {

@@ -1,5 +1,6 @@
 import type { PlayerResult, UmaMark, GameMode } from './db'
-import { getSessionWithDetails } from './db-utils'
+import { getSessionWithDetails, saveSession as dbSaveSession, type SessionSaveData } from './db-utils'
+import { db } from './db'
 
 // ========================================
 // Type Definitions
@@ -128,6 +129,8 @@ export async function calculateSessionSummary(
 
   const { session, hanchans } = sessionDetails
 
+  console.log(`[DEBUG] calculateSessionSummary: sessionId=${sessionId}, 半荘数=${hanchans.length}`)
+
   const rankCounts = { first: 0, second: 0, third: 0, fourth: 0 }
   let totalPayout = 0
   let totalChips = 0
@@ -137,19 +140,32 @@ export async function calculateSessionSummary(
     const ranks = calculateRanks(hanchan.players)
 
     const mainUserResult = hanchan.players.find((p) => p.userId === mainUserId)
+
+    if (!mainUserResult) {
+      console.warn(`[WARNING] 半荘${hanchan.hanchanNumber}: メインユーザー(${mainUserId})が見つかりません`)
+      console.log(`  プレイヤー一覧:`, hanchan.players.map(p => ({ name: p.playerName, userId: p.userId })))
+      continue
+    }
+
     if (mainUserResult) {
       // 点数が入力されていない半荘はスキップ（未入力の半荘は集計対象外）
       if (mainUserResult.score === null) {
+        console.log(`[DEBUG] 半荘${hanchan.hanchanNumber}: メインユーザーのscoreがnull - スキップ`)
         continue
       }
 
       const rank = ranks.get(mainUserResult.id) || 0
+
+      console.log(`[DEBUG] 半荘${hanchan.hanchanNumber}: メインユーザーscore=${mainUserResult.score}, rank=${rank}`)
 
       // 着順カウント
       if (rank === 1) rankCounts.first++
       else if (rank === 2) rankCounts.second++
       else if (rank === 3) rankCounts.third++
       else if (rank === 4) rankCounts.fourth++
+      else {
+        console.warn(`[WARNING] 半荘${hanchan.hanchanNumber}: メインユーザーのrank=${rank}がカウントされません`)
+      }
 
       // 収支とチップを加算
       totalPayout += calculatePayout(
@@ -176,6 +192,8 @@ export async function calculateSessionSummary(
         totalHanchans
       : 0
 
+  console.log(`[DEBUG] 最終集計: totalHanchans=${totalHanchans}, rankCounts=`, rankCounts)
+
   return {
     sessionId,
     date: session.date,
@@ -188,4 +206,53 @@ export async function calculateSessionSummary(
       ? { first: rankCounts.first, second: rankCounts.second, third: rankCounts.third }
       : rankCounts
   }
+}
+
+// ========================================
+// Session Save with Summary
+// ========================================
+
+/**
+ * セッションを保存し、サマリーを事前計算して保存
+ * パフォーマンス最適化のため、保存時にサマリーを計算
+ * @param data セッション保存データ
+ * @param mainUserId メインユーザーID
+ * @returns 保存されたセッションID
+ */
+export async function saveSessionWithSummary(
+  data: SessionSaveData,
+  mainUserId: string
+): Promise<string> {
+  console.log(`[DEBUG] 📝 saveSessionWithSummary開始:`, {
+    date: data.date,
+    mode: data.mode,
+    hanchanCount: data.hanchans.length,
+    mainUserId
+  })
+
+  const startTime = performance.now()
+
+  // 1. セッションを保存
+  const sessionId = await dbSaveSession(data)
+  const saveTime = performance.now() - startTime
+
+  console.log(`[DEBUG] ✅ セッション保存完了 (${saveTime.toFixed(1)}ms):`, { sessionId })
+
+  // 2. サマリーを計算
+  const summaryStartTime = performance.now()
+  const summary = await calculateSessionSummary(sessionId, mainUserId)
+  const summaryTime = performance.now() - summaryStartTime
+
+  console.log(`[DEBUG] 📊 サマリー計算完了 (${summaryTime.toFixed(1)}ms):`, summary)
+
+  // 3. セッションにサマリーを保存
+  const updateStartTime = performance.now()
+  await db.sessions.update(sessionId, { summary })
+  const updateTime = performance.now() - updateStartTime
+
+  const totalTime = performance.now() - startTime
+
+  console.log(`[DEBUG] 💾 サマリー保存完了 (${updateTime.toFixed(1)}ms) - 合計時間: ${totalTime.toFixed(1)}ms`)
+
+  return sessionId
 }

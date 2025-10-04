@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { SessionDetailDialog } from '@/components/SessionDetailDialog'
 import { useSessions } from '@/hooks/useSessions'
 import type { User } from '@/lib/db'
 import { cn } from '@/lib/utils'
@@ -25,6 +26,8 @@ export function HistoryTab({ mainUser }: HistoryTabProps) {
   const { sessions, loading, error } = useSessions(mainUser?.id || '')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
 
   const handleDeleteClick = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation() // カードのクリックイベントを防ぐ
@@ -91,8 +94,8 @@ export function HistoryTab({ mainUser }: HistoryTabProps) {
             key={session.id}
             className="cursor-pointer hover:shadow-lg transition-shadow relative gap-2 py-3"
             onClick={() => {
-              // TODO: 詳細モーダルを開く (Stage 2で実装)
-              console.log('Session clicked:', session.id)
+              setSelectedSessionId(session.id)
+              setDetailDialogOpen(true)
             }}
           >
             <CardHeader className="px-3">
@@ -170,6 +173,12 @@ export function HistoryTab({ mainUser }: HistoryTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SessionDetailDialog
+        sessionId={selectedSessionId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </>
   )
 }

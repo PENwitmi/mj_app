@@ -32,12 +32,15 @@ function App() {
     init()
   }, [])
 
-  if (loading) {
+  // DB初期化 または mainUser取得が完了するまで待機
+  if (loading || !mainUser) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="text-lg font-medium">初期化中...</div>
-          <div className="text-sm text-muted-foreground mt-2">データベースを準備しています</div>
+          <div className="text-sm text-muted-foreground mt-2">
+            {loading ? 'データベースを準備しています' : 'ユーザー情報を読み込んでいます'}
+          </div>
         </div>
       </div>
     )
@@ -54,6 +57,7 @@ function App() {
     )
   }
 
+  // ここから先は mainUser が確実に存在する（上記の条件分岐で保証済み）
   return (
     <div className="flex flex-col h-screen">
       <Toaster />

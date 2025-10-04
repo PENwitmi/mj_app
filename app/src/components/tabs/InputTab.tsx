@@ -13,7 +13,8 @@ import { toast } from 'sonner'
 import type { GameMode, UmaMark, UmaRule, User } from '@/lib/db'
 import { getDefaultUmaRule } from '@/lib/utils'
 import { PlayerSelect } from '@/components/PlayerSelect'
-import { saveSession, type SessionSaveData } from '@/lib/db-utils'
+import { saveSessionWithSummary } from '@/lib/session-utils'
+import type { SessionSaveData } from '@/lib/db-utils'
 
 // セッション設定の型定義
 interface SessionSettings {
@@ -326,20 +327,24 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
         umaRule: settings.umaRule === 'standard' ? 'standard' : 'second-minus',
         hanchans: hanchans.map(h => ({
           hanchanNumber: h.hanchanNumber,
-          players: h.players.map(p => ({
+          players: h.players.map((p, idx) => ({
             playerName: p.playerName,
             userId: p.userId,
             score: p.score ?? 0,
             umaMark: p.umaMark,
             chips: p.chips,
             parlorFee: p.parlorFee,
-            isSpectator: p.isSpectator
+            isSpectator: p.isSpectator,
+            position: idx  // 列番号を記録（0, 1, 2, 3）
           }))
         }))
       }
 
-      // DB保存
-      await saveSession(saveData)
+      console.log('[DEBUG] InputTab: saveDataの半荘数 =', saveData.hanchans.length);
+      console.log('[DEBUG] InputTab: 半荘番号リスト =', saveData.hanchans.map(h => h.hanchanNumber));
+
+      // DB保存（サマリーも事前計算して保存）
+      await saveSessionWithSummary(saveData, mainUser!.id)
 
       // 成功通知
       toast.success('セッションを保存しました')
@@ -602,10 +607,15 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
                       variant="ghost"
                       className="w-full h-10 text-sm rounded-none border-t hover:bg-accent"
                       onClick={() => {
-                        const playerNames = getInitialPlayerNames(selectedMode, playerCount)
+                        // 前の半荘のプレイヤー設定を引き継ぐ
+                        const lastHanchan = hanchans[hanchans.length - 1]
                         const newHanchan: Hanchan = {
                           hanchanNumber: hanchans.length + 1,
-                          players: playerNames.map(createInitialPlayerResult),
+                          players: lastHanchan.players.map(p => ({
+                            ...createInitialPlayerResult(p.playerName),
+                            userId: p.userId,
+                            playerName: p.playerName,
+                          })),
                           autoCalculated: false,
                         }
                         setHanchans([...hanchans, newHanchan])

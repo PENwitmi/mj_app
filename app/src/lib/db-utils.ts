@@ -414,7 +414,8 @@ export async function createPlayerResult(
   userId: string | null,
   playerName: string,
   score: number,
-  umaMark: UmaMark
+  umaMark: UmaMark,
+  position = 0  // デフォルト値: 0
 ): Promise<PlayerResult> {
   const playerResult: PlayerResult = {
     id: crypto.randomUUID(),
@@ -425,6 +426,7 @@ export async function createPlayerResult(
     umaMark,
     isSpectator: false,
     chips: 0,
+    position,
     createdAt: new Date()
   };
 
@@ -433,13 +435,16 @@ export async function createPlayerResult(
 }
 
 /**
- * 半荘のプレイヤー結果を取得
+ * 半荘のプレイヤー結果を取得（position順にソート）
  */
 export async function getPlayerResultsByHanchan(hanchanId: string): Promise<PlayerResult[]> {
-  return await db.playerResults
+  const results = await db.playerResults
     .where('hanchanId')
     .equals(hanchanId)
     .toArray();
+
+  // positionでソート（0, 1, 2, 3の順）- InputTabでの列順を復元
+  return results.sort((a, b) => a.position - b.position);
 }
 
 // ========================================
@@ -569,6 +574,7 @@ export interface SessionSaveData {
       chips: number
       parlorFee: number
       isSpectator: boolean
+      position: number  // 列番号（0, 1, 2, 3）
     }>
   }>
 }
@@ -609,57 +615,69 @@ export async function saveSession(data: SessionSaveData): Promise<string> {
       updatedAt: now
     };
 
-    await db.sessions.add(session);
+    // トランザクション内で全て保存（完了まで他の処理から見えない）
+    await db.transaction('rw', [db.sessions, db.hanchans, db.playerResults], async () => {
+      await db.sessions.add(session);
 
-    // 各半荘とプレイヤー結果を作成
-    for (const hanchanData of data.hanchans) {
-      const hanchanId = crypto.randomUUID();
+      // 各半荘とプレイヤー結果を作成
+      for (const hanchanData of data.hanchans) {
+        const hanchanId = crypto.randomUUID();
 
-      const hanchan: Hanchan = {
-        id: hanchanId,
-        sessionId,
-        hanchanNumber: hanchanData.hanchanNumber,
-        autoCalculated: false,
-        createdAt: now
-      };
+        console.log(`[DEBUG] 半荘${hanchanData.hanchanNumber}を保存開始`);
 
-      await db.hanchans.add(hanchan);
-
-      // プレイヤー結果を作成
-      for (const playerData of hanchanData.players) {
-        const playerResult: PlayerResult = {
-          id: crypto.randomUUID(),
-          hanchanId,
-          userId: playerData.userId,
-          playerName: playerData.playerName,
-          score: playerData.score,
-          umaMark: playerData.umaMark,
-          isSpectator: playerData.isSpectator,
-          chips: playerData.chips,
+        const hanchan: Hanchan = {
+          id: hanchanId,
+          sessionId,
+          hanchanNumber: hanchanData.hanchanNumber,
+          autoCalculated: false,
           createdAt: now
         };
 
-        await db.playerResults.add(playerResult);
-      }
+        await db.hanchans.add(hanchan);
+        console.log(`[DEBUG] 半荘${hanchanData.hanchanNumber}のHanchanレコード保存完了`);
 
-      // ゼロサム検証
-      const isZeroSum = await validateZeroSum(hanchanId);
-      if (!isZeroSum) {
-        logger.warn(`半荘${hanchanData.hanchanNumber}のゼロサムチェック失敗`, {
-          context: 'db-utils.saveSession',
-          data: { hanchanId, hanchanNumber: hanchanData.hanchanNumber }
-        });
-      }
+        // プレイヤー結果を作成
+        for (const playerData of hanchanData.players) {
+          const playerResult: PlayerResult = {
+            id: crypto.randomUUID(),
+            hanchanId,
+            userId: playerData.userId,
+            playerName: playerData.playerName,
+            score: playerData.score,
+            umaMark: playerData.umaMark,
+            isSpectator: playerData.isSpectator,
+            chips: playerData.chips,
+            position: playerData.position,  // 列番号を保存
+            createdAt: now
+          };
 
-      // ウママーク合計検証
-      const isUmaValid = await validateUmaMarks(hanchanId);
-      if (!isUmaValid) {
-        logger.warn(`半荘${hanchanData.hanchanNumber}のウママーク合計チェック失敗`, {
-          context: 'db-utils.saveSession',
-          data: { hanchanId, hanchanNumber: hanchanData.hanchanNumber }
-        });
+          await db.playerResults.add(playerResult);
+        }
+        console.log(`[DEBUG] 半荘${hanchanData.hanchanNumber}のPlayerResults保存完了（${hanchanData.players.length}人）`);
+
+        // ゼロサム検証
+        const isZeroSum = await validateZeroSum(hanchanId);
+        console.log(`[DEBUG] 半荘${hanchanData.hanchanNumber}のゼロサム検証: ${isZeroSum ? 'OK' : 'NG'}`);
+        if (!isZeroSum) {
+          logger.warn(`半荘${hanchanData.hanchanNumber}のゼロサムチェック失敗`, {
+            context: 'db-utils.saveSession',
+            data: { hanchanId, hanchanNumber: hanchanData.hanchanNumber }
+          });
+        }
+
+        // ウママーク合計検証
+        const isUmaValid = await validateUmaMarks(hanchanId);
+        console.log(`[DEBUG] 半荘${hanchanData.hanchanNumber}のウママーク検証: ${isUmaValid ? 'OK' : 'NG'}`);
+        if (!isUmaValid) {
+          logger.warn(`半荘${hanchanData.hanchanNumber}のウママーク合計チェック失敗`, {
+            context: 'db-utils.saveSession',
+            data: { hanchanId, hanchanNumber: hanchanData.hanchanNumber }
+          });
+        }
+
+        console.log(`[DEBUG] 半荘${hanchanData.hanchanNumber}の保存完了`);
       }
-    }
+    }); // トランザクション終了
 
     logger.info('セッション保存成功', {
       context: 'db-utils.saveSession',
