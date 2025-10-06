@@ -20,9 +20,11 @@ import { toast } from 'sonner'
 
 interface HistoryTabProps {
   mainUser: User | null
+  users: User[]
+  addNewUser: (name: string) => Promise<User>
 }
 
-export function HistoryTab({ mainUser }: HistoryTabProps) {
+export function HistoryTab({ mainUser, users, addNewUser }: HistoryTabProps) {
   const { sessions, loading, error } = useSessions(mainUser?.id || '')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
@@ -178,6 +180,9 @@ export function HistoryTab({ mainUser }: HistoryTabProps) {
         sessionId={selectedSessionId}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
+        mainUser={mainUser}
+        users={users}
+        addNewUser={addNewUser}
       />
     </>
   )

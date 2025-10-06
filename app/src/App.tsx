@@ -74,11 +74,19 @@ function App() {
           </TabsContent>
 
           <TabsContent value="history" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
-            <HistoryTab mainUser={mainUser} />
+            <HistoryTab
+              mainUser={mainUser}
+              users={activeUsers}
+              addNewUser={addNewUser}
+            />
           </TabsContent>
 
           <TabsContent value="analysis" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
-            <AnalysisTab />
+            <AnalysisTab
+              mainUser={mainUser}
+              users={activeUsers}
+              addNewUser={addNewUser}
+            />
           </TabsContent>
 
           <TabsContent value="settings" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>

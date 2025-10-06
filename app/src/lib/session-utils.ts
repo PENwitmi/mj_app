@@ -1,6 +1,7 @@
-import type { PlayerResult, UmaMark, GameMode } from './db'
+import type { PlayerResult, GameMode } from './db'
 import { getSessionWithDetails, saveSession as dbSaveSession, type SessionSaveData } from './db-utils'
 import { db } from './db'
+import { umaMarkToValue } from './uma-utils'
 
 // ========================================
 // Type Definitions
@@ -56,30 +57,6 @@ export function calculateRanks(playerResults: PlayerResult[]): Map<string, numbe
 // ========================================
 
 /**
- * ウママークを数値に変換
- */
-function umaMarkToValue(umaMark: UmaMark): number {
-  switch (umaMark) {
-    case '○○○':
-      return 3
-    case '○○':
-      return 2
-    case '○':
-      return 1
-    case '':
-      return 0
-    case '✗':
-      return -1
-    case '✗✗':
-      return -2
-    case '✗✗✗':
-      return -3
-    default:
-      return 0
-  }
-}
-
-/**
  * 単一半荘での収支を計算
  * @param score ±点数
  * @param umaMark ウママーク
@@ -92,7 +69,7 @@ function umaMarkToValue(umaMark: UmaMark): number {
  */
 export function calculatePayout(
   score: number,
-  umaMark: UmaMark,
+  umaMark: import('./db').UmaMark,
   chips: number,
   rate: number,
   umaValue: number,
@@ -149,8 +126,9 @@ export async function calculateSessionSummary(
 
     if (mainUserResult) {
       // 点数が入力されていない半荘はスキップ（未入力の半荘は集計対象外）
-      if (mainUserResult.score === null) {
-        console.log(`[DEBUG] 半荘${hanchan.hanchanNumber}: メインユーザーのscoreがnull - スキップ`)
+      // 防御的プログラミング: null or 0 の両方をスキップ
+      if (mainUserResult.score === null || mainUserResult.score === 0) {
+        console.log(`[DEBUG] 半荘${hanchan.hanchanNumber}: メインユーザーのscore=${mainUserResult.score} - スキップ`)
         continue
       }
 

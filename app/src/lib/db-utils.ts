@@ -1,6 +1,118 @@
-import { db, type User, type Session, type Hanchan, type PlayerResult, type UmaMark } from './db';
+import { db, type User, type Session, type Hanchan, type PlayerResult, type UmaMark, type GameMode } from './db';
 import { logger } from './logger';
 import { DatabaseError, ValidationError, NotFoundError } from './errors';
+import { umaMarkToValue } from './uma-utils';
+import type { SessionSettings } from '@/components/input/SessionSettings';
+
+// ========================================
+// UI Layer Types (編集用)
+// ========================================
+
+/**
+ * UI層で使用する半荘データ型
+ * DB層のHanchanとの違い:
+ * - idを含まない（編集時は新規作成されるため）
+ * - players配列がUIPlayerResult型
+ */
+export interface UIHanchan {
+  hanchanNumber: number
+  players: UIPlayerResult[]
+  autoCalculated: boolean
+}
+
+/**
+ * UI層で使用するプレイヤー結果型
+ * DB層のPlayerResultとの違い:
+ * - idとhanchanIdを含まない
+ * - umaMarkManualフィールドを含む（UI専用）
+ */
+export interface UIPlayerResult {
+  playerName: string
+  userId: string | null
+  score: number | null
+  umaMark: UmaMark
+  chips: number
+  parlorFee: number
+  isSpectator: boolean
+  umaMarkManual: boolean  // UI専用: ウママークが手動設定されたか
+}
+
+// ========================================
+// Analysis Types (Phase 5: 分析タブ用)
+// ========================================
+
+/**
+ * 期間フィルタータイプ
+ */
+export type PeriodType =
+  | 'this-month'      // 今月
+  | 'this-year'       // 今年
+  | `year-${number}`  // 特定年（例: 'year-2024'）
+  | 'all-time'        // 全期間
+
+/**
+ * 分析フィルター条件
+ */
+export interface AnalysisFilter {
+  userId: string           // 分析対象ユーザーID
+  period: PeriodType       // 期間フィルター
+  mode: GameMode | 'all'   // モードフィルター（'4-player' | '3-player' | 'all'）
+}
+
+/**
+ * 着順統計
+ */
+export interface RankStatistics {
+  totalGames: number         // 総半荘数
+  rankCounts: {
+    first: number            // 1位回数
+    second: number           // 2位回数
+    third: number            // 3位回数
+    fourth?: number          // 4位回数（4人打ちのみ）
+  }
+  rankRates: {
+    first: number            // 1位率（%）
+    second: number           // 2位率（%）
+    third: number            // 3位率（%）
+    fourth?: number          // 4位率（%）
+  }
+  averageRank: number        // 平均着順（小数第2位まで）
+}
+
+/**
+ * 収支統計
+ */
+export interface RevenueStatistics {
+  totalIncome: number        // 総収入（プラスセッションの合計）
+  totalExpense: number       // 総支出（マイナスセッションの合計、負の値）
+  totalBalance: number       // 総収支（totalIncome + totalExpense）
+}
+
+/**
+ * ポイント統計
+ */
+export interface PointStatistics {
+  plusPoints: number         // プラスポイント合計（半荘単位）
+  minusPoints: number        // マイナスポイント合計（半荘単位、負の値）
+  pointBalance: number       // ポイント収支（plusPoints + minusPoints）
+}
+
+/**
+ * チップ統計
+ */
+export interface ChipStatistics {
+  totalChips: number         // 総チップ獲得枚数
+}
+
+/**
+ * 分析統計（統合型）
+ */
+export interface AnalysisStatistics {
+  rank?: RankStatistics      // 着順統計（全体モード時はundefined）
+  revenue: RevenueStatistics
+  point: PointStatistics
+  chip: ChipStatistics
+}
 
 // ========================================
 // User Functions
@@ -476,18 +588,8 @@ export async function validateUmaMarks(hanchanId: string): Promise<boolean> {
     .filter(pr => !pr.isSpectator) // 見学者を除く
     .toArray();
 
-  const umaValues: Record<UmaMark, number> = {
-    '○○○': 3,
-    '○○': 2,
-    '○': 1,
-    '': 0,
-    '✗': -1,
-    '✗✗': -2,
-    '✗✗✗': -3
-  };
-
   const total = playerResults.reduce(
-    (sum, pr) => sum + umaValues[pr.umaMark],
+    (sum, pr) => sum + umaMarkToValue(pr.umaMark),
     0
   );
 
@@ -551,6 +653,86 @@ export async function getUserStats(userId: string) {
 }
 
 // ========================================
+// Data Conversion Functions (UI ↔ DB)
+// ========================================
+
+/**
+ * DB Session → UI SessionSettings
+ * 編集モード開始時に使用
+ */
+export function sessionToSettings(session: Session): SessionSettings {
+  return {
+    date: session.date,
+    rate: session.rate,
+    umaValue: session.umaValue,
+    chipRate: session.chipRate,
+    umaRule: session.umaRule
+  }
+}
+
+/**
+ * DB Hanchan[] → UI Hanchan[]
+ * 編集モード開始時に使用
+ * - players配列をposition順にソート
+ * - umaMarkManualをfalseで初期化（編集時はリセット）
+ */
+export function dbHanchansToUIHanchans(
+  dbHanchans: Array<Hanchan & { players: PlayerResult[] }>
+): UIHanchan[] {
+  return dbHanchans.map(hanchan => ({
+    hanchanNumber: hanchan.hanchanNumber,
+    autoCalculated: false, // 編集時はリセット
+    players: hanchan.players
+      .sort((a, b) => a.position - b.position) // position順にソート
+      .map(player => ({
+        playerName: player.playerName,
+        userId: player.userId,
+        score: player.score,
+        umaMark: player.umaMark,
+        chips: player.chips,
+        parlorFee: 0, // UI層で設定（DBにはこのフィールドなし）
+        isSpectator: player.isSpectator,
+        umaMarkManual: false // 編集時はリセット
+      }))
+  }))
+}
+
+/**
+ * UI編集データ → DB保存用データ
+ * 保存時に使用
+ * - GameMode文字列変換: '4-player' → 'four-player'
+ * - position番号を配列インデックスから付与
+ * - score ?? 0変換
+ */
+export function uiDataToSaveData(
+  settings: SessionSettings,
+  hanchans: UIHanchan[],
+  mode: GameMode
+): SessionSaveData {
+  return {
+    date: settings.date,
+    mode: mode === '4-player' ? 'four-player' : 'three-player',
+    rate: settings.rate,
+    umaValue: settings.umaValue,
+    chipRate: settings.chipRate,
+    umaRule: settings.umaRule,
+    hanchans: hanchans.map(hanchan => ({
+      hanchanNumber: hanchan.hanchanNumber,
+      players: hanchan.players.map((player, idx) => ({
+        playerName: player.playerName,
+        userId: player.userId,
+        score: player.score ?? 0,
+        umaMark: player.umaMark,
+        chips: player.chips,
+        parlorFee: player.parlorFee,
+        isSpectator: player.isSpectator,
+        position: idx  // 配列インデックスをposition番号として使用
+      }))
+    }))
+  }
+}
+
+// ========================================
 // Session Save Functions
 // ========================================
 
@@ -580,6 +762,32 @@ export interface SessionSaveData {
 }
 
 /**
+ * 空ハンチャン判定
+ *
+ * 空ハンチャンの定義:
+ * - 全プレイヤーが見学者、または
+ * - 全プレイヤーのscoreがnullまたは0
+ *
+ * @param hanchan - 判定対象のハンチャンデータ
+ * @returns true: 空ハンチャン, false: 有効なハンチャン
+ *
+ * @example
+ * // 全員0点
+ * isEmptyHanchan({ players: [{ score: 0, isSpectator: false }, { score: 0, isSpectator: false }] }) // true
+ *
+ * // 1人でも点数入力あり
+ * isEmptyHanchan({ players: [{ score: 100, isSpectator: false }, { score: 0, isSpectator: false }] }) // false
+ *
+ * // 全員見学者
+ * isEmptyHanchan({ players: [{ isSpectator: true }, { isSpectator: true }] }) // true
+ */
+function isEmptyHanchan(hanchan: { players: Array<{ score: number | null; isSpectator: boolean }> }): boolean {
+  return hanchan.players.every(p =>
+    p.isSpectator || p.score === null || p.score === 0
+  )
+}
+
+/**
  * セッションを保存（Session + Hanchan + PlayerResult を一括作成）
  */
 export async function saveSession(data: SessionSaveData): Promise<string> {
@@ -598,19 +806,44 @@ export async function saveSession(data: SessionSaveData): Promise<string> {
       throw new ValidationError('半荘データがありません', 'hanchans');
     }
 
+    // 空ハンチャンの二重チェック（防御的プログラミング）
+    const validHanchans = data.hanchans.filter(h => !isEmptyHanchan(h))
+
+    if (validHanchans.length === 0) {
+      logger.warn('全ハンチャンが空データでした', {
+        context: 'db-utils.saveSession',
+        data: { totalHanchans: data.hanchans.length }
+      })
+      throw new ValidationError('有効な半荘データがありません', 'hanchans')
+    }
+
+    if (validHanchans.length < data.hanchans.length) {
+      logger.warn('空ハンチャンが検出されました（フィルタリング済み）', {
+        context: 'db-utils.saveSession',
+        data: {
+          totalHanchans: data.hanchans.length,
+          validHanchans: validHanchans.length,
+          filtered: data.hanchans.length - validHanchans.length
+        }
+      })
+    }
+
+    // 有効ハンチャンのみを保存
+    const dataToSave = { ...data, hanchans: validHanchans }
+
     // Session作成
     const sessionId = crypto.randomUUID();
     const now = new Date();
 
     const session: Session = {
       id: sessionId,
-      date: data.date,
-      mode: data.mode === 'four-player' ? '4-player' : '3-player',
-      rate: data.rate,
-      umaValue: data.umaValue,
-      chipRate: data.chipRate,
-      parlorFee: data.hanchans[0]?.players[0]?.parlorFee || 0,
-      umaRule: data.umaRule as 'standard' | 'second-minus',
+      date: dataToSave.date,
+      mode: dataToSave.mode === 'four-player' ? '4-player' : '3-player',
+      rate: dataToSave.rate,
+      umaValue: dataToSave.umaValue,
+      chipRate: dataToSave.chipRate,
+      parlorFee: dataToSave.hanchans[0]?.players[0]?.parlorFee || 0,
+      umaRule: dataToSave.umaRule as 'standard' | 'second-minus',
       createdAt: now,
       updatedAt: now
     };
@@ -619,8 +852,8 @@ export async function saveSession(data: SessionSaveData): Promise<string> {
     await db.transaction('rw', [db.sessions, db.hanchans, db.playerResults], async () => {
       await db.sessions.add(session);
 
-      // 各半荘とプレイヤー結果を作成
-      for (const hanchanData of data.hanchans) {
+      // 各半荘とプレイヤー結果を作成（有効ハンチャンのみ）
+      for (const hanchanData of dataToSave.hanchans) {
         const hanchanId = crypto.randomUUID();
 
         console.log(`[DEBUG] 半荘${hanchanData.hanchanNumber}を保存開始`);
@@ -681,7 +914,7 @@ export async function saveSession(data: SessionSaveData): Promise<string> {
 
     logger.info('セッション保存成功', {
       context: 'db-utils.saveSession',
-      data: { sessionId, hanchanCount: data.hanchans.length }
+      data: { sessionId, hanchanCount: dataToSave.hanchans.length }
     });
 
     return sessionId;
@@ -748,4 +981,385 @@ export async function deleteSession(sessionId: string): Promise<void> {
     });
     throw error;
   }
+}
+
+/**
+ * セッションを更新（カスケード削除+再作成パターン）
+ * トランザクション内で以下を実行:
+ * 1. 既存の半荘・プレイヤー結果を削除
+ * 2. セッション設定を更新
+ * 3. 新しい半荘・プレイヤー結果を作成
+ * 4. サマリーを再計算・保存
+ *
+ * @param sessionId 更新対象のセッションID
+ * @param data 更新データ
+ * @param mainUserId メインユーザーID（サマリー計算用）
+ */
+export async function updateSession(
+  sessionId: string,
+  data: SessionSaveData,
+  mainUserId: string
+): Promise<void> {
+  try {
+    logger.info('セッション更新開始', {
+      context: 'db-utils.updateSession',
+      data: { sessionId, date: data.date, mode: data.mode }
+    });
+
+    // バリデーション
+    if (!data.date || !data.mode) {
+      throw new ValidationError('必須項目が入力されていません', 'date, mode');
+    }
+
+    if (data.hanchans.length === 0) {
+      throw new ValidationError('半荘データがありません', 'hanchans');
+    }
+
+    // Dexieのtransactionで原子性を保証（全て成功 or 全て失敗）
+    await db.transaction('rw', [db.sessions, db.hanchans, db.playerResults], async () => {
+      // 1. 既存の半荘IDを取得
+      const existingHanchans = await db.hanchans
+        .where('sessionId')
+        .equals(sessionId)
+        .toArray();
+
+      console.log(`[DEBUG] updateSession: 既存半荘数=${existingHanchans.length}`);
+
+      // 2. カスケード削除: PlayerResults → Hanchans
+      for (const hanchan of existingHanchans) {
+        await db.playerResults
+          .where('hanchanId')
+          .equals(hanchan.id)
+          .delete();
+      }
+
+      await db.hanchans
+        .where('sessionId')
+        .equals(sessionId)
+        .delete();
+
+      console.log(`[DEBUG] updateSession: 既存データ削除完了`);
+
+      // 3. セッション設定を更新
+      const now = new Date();
+      await db.sessions.update(sessionId, {
+        date: data.date,
+        mode: data.mode === 'four-player' ? '4-player' : '3-player',
+        rate: data.rate,
+        umaValue: data.umaValue,
+        chipRate: data.chipRate,
+        parlorFee: data.hanchans[0]?.players[0]?.parlorFee || 0,
+        umaRule: data.umaRule as 'standard' | 'second-minus',
+        updatedAt: now
+      });
+
+      console.log(`[DEBUG] updateSession: セッション設定更新完了`);
+
+      // 4. 新しい半荘とプレイヤー結果を作成
+      for (const hanchanData of data.hanchans) {
+        const hanchanId = crypto.randomUUID();
+
+        console.log(`[DEBUG] updateSession: 半荘${hanchanData.hanchanNumber}を作成開始`);
+
+        const hanchan: Hanchan = {
+          id: hanchanId,
+          sessionId,
+          hanchanNumber: hanchanData.hanchanNumber,
+          autoCalculated: false,
+          createdAt: now
+        };
+
+        await db.hanchans.add(hanchan);
+
+        // プレイヤー結果を作成
+        for (const playerData of hanchanData.players) {
+          const playerResult: PlayerResult = {
+            id: crypto.randomUUID(),
+            hanchanId,
+            userId: playerData.userId,
+            playerName: playerData.playerName,
+            score: playerData.score,
+            umaMark: playerData.umaMark,
+            isSpectator: playerData.isSpectator,
+            chips: playerData.chips,
+            position: playerData.position,
+            createdAt: now
+          };
+
+          await db.playerResults.add(playerResult);
+        }
+
+        console.log(`[DEBUG] updateSession: 半荘${hanchanData.hanchanNumber}作成完了`);
+
+        // ゼロサム検証
+        const isZeroSum = await validateZeroSum(hanchanId);
+        if (!isZeroSum) {
+          logger.warn(`半荘${hanchanData.hanchanNumber}のゼロサムチェック失敗`, {
+            context: 'db-utils.updateSession',
+            data: { hanchanId, hanchanNumber: hanchanData.hanchanNumber }
+          });
+        }
+
+        // ウママーク合計検証
+        const isUmaValid = await validateUmaMarks(hanchanId);
+        if (!isUmaValid) {
+          logger.warn(`半荘${hanchanData.hanchanNumber}のウママーク合計チェック失敗`, {
+            context: 'db-utils.updateSession',
+            data: { hanchanId, hanchanNumber: hanchanData.hanchanNumber }
+          });
+        }
+      }
+    }); // トランザクション終了
+
+    console.log(`[DEBUG] updateSession: トランザクション完了`);
+
+    // 5. サマリーを再計算（トランザクション外で実行）
+    // session-utils.tsのcalculateSessionSummaryを使用
+    const { calculateSessionSummary } = await import('./session-utils');
+    const summary = await calculateSessionSummary(sessionId, mainUserId);
+
+    // 6. サマリーを保存
+    await db.sessions.update(sessionId, { summary });
+
+    logger.info('セッション更新成功', {
+      context: 'db-utils.updateSession',
+      data: { sessionId, hanchanCount: data.hanchans.length }
+    });
+  } catch (err) {
+    const error = new DatabaseError('セッションの更新に失敗しました', {
+      originalError: err
+    });
+    logger.error(error.message, {
+      context: 'db-utils.updateSession',
+      error
+    });
+    throw error;
+  }
+}
+
+// ========================================
+// Analysis Functions (Phase 5: 分析タブ用)
+// ========================================
+
+/**
+ * 半荘内のプレイヤーの着順を計算（点数ベース）
+ * session-utils.ts の calculateRanks と同じロジック
+ */
+function calculateRanksFromScores(playerResults: PlayerResult[]): Map<string, number> {
+  const rankMap = new Map<string, number>()
+
+  // 見学者を除外、かつ点数が入力されているプレイヤーのみを対象
+  const activePlayers = playerResults
+    .filter((p) => !p.isSpectator && p.score !== null)
+    .sort((a, b) => b.score! - a.score!) // 点数降順
+
+  // 着順を割り当て（同点の場合は同着）
+  let currentRank = 1
+  activePlayers.forEach((player, index) => {
+    if (index > 0 && player.score! < activePlayers[index - 1].score!) {
+      currentRank = index + 1
+    }
+    rankMap.set(player.id, currentRank)
+  })
+
+  return rankMap
+}
+
+/**
+ * 着順統計を計算
+ *
+ * @param hanchans 半荘データ配列（各半荘の全プレイヤーデータを含む）
+ * @param targetUserId 対象ユーザーID
+ * @param mode ゲームモード
+ * @returns 着順統計
+ */
+export function calculateRankStatistics(
+  hanchans: Array<{ players: PlayerResult[] }>,
+  targetUserId: string,
+  mode: '4-player' | '3-player'
+): RankStatistics {
+  const rankCounts = { first: 0, second: 0, third: 0, fourth: 0 }
+  let totalGames = 0
+
+  // 各半荘ごとに着順を計算
+  for (const hanchan of hanchans) {
+    // 防御的プログラミング: 空ハンチャンをスキップ（全員0点の場合）
+    const hasValidScores = hanchan.players.some(p =>
+      !p.isSpectator && p.score !== null && p.score !== 0
+    )
+
+    if (!hasValidScores) {
+      continue // 全員0点 or null の場合はスキップ
+    }
+
+    // 半荘内の全プレイヤーの着順を計算（点数順）
+    const ranks = calculateRanksFromScores(hanchan.players)
+
+    // 対象ユーザーのPlayerResultを見つける
+    const targetPlayer = hanchan.players.find(p => p.userId === targetUserId)
+    if (!targetPlayer || targetPlayer.isSpectator || targetPlayer.score === null || targetPlayer.score === 0) {
+      continue // 見学者 or 点数未入力 or 0点 はスキップ
+    }
+
+    // 対象ユーザーの着順を取得
+    const rank = ranks.get(targetPlayer.id)
+    if (!rank) continue
+
+    // 着順をカウント
+    totalGames++
+    switch (rank) {
+      case 1: rankCounts.first++; break
+      case 2: rankCounts.second++; break
+      case 3: rankCounts.third++; break
+      case 4: rankCounts.fourth++; break
+    }
+  }
+
+  if (totalGames === 0) {
+    return {
+      totalGames: 0,
+      rankCounts: { first: 0, second: 0, third: 0, fourth: mode === '4-player' ? 0 : undefined },
+      rankRates: { first: 0, second: 0, third: 0, fourth: mode === '4-player' ? 0 : undefined },
+      averageRank: 0
+    }
+  }
+
+  // 着順率計算
+  const rankRates = {
+    first: (rankCounts.first / totalGames) * 100,
+    second: (rankCounts.second / totalGames) * 100,
+    third: (rankCounts.third / totalGames) * 100,
+    fourth: mode === '4-player' ? (rankCounts.fourth / totalGames) * 100 : undefined
+  }
+
+  // 平均着順計算
+  const totalRankSum =
+    1 * rankCounts.first +
+    2 * rankCounts.second +
+    3 * rankCounts.third +
+    (mode === '4-player' ? 4 * rankCounts.fourth : 0)
+  const averageRank = totalRankSum / totalGames
+
+  return {
+    totalGames,
+    rankCounts: mode === '4-player' ? rankCounts : { ...rankCounts, fourth: undefined },
+    rankRates,
+    averageRank: Number(averageRank.toFixed(2))
+  }
+}
+
+/**
+ * 収支統計を計算
+ */
+export function calculateRevenueStatistics(
+  sessions: Array<{ totalPayout: number }>
+): RevenueStatistics {
+  let totalIncome = 0
+  let totalExpense = 0
+
+  sessions.forEach(session => {
+    if (session.totalPayout > 0) {
+      totalIncome += session.totalPayout
+    } else {
+      totalExpense += session.totalPayout // 負の値
+    }
+  })
+
+  return {
+    totalIncome,
+    totalExpense,
+    totalBalance: totalIncome + totalExpense
+  }
+}
+
+/**
+ * ポイント統計を計算
+ */
+export function calculatePointStatistics(
+  playerResults: PlayerResult[]
+): PointStatistics {
+  // 見学者を除外、かつscore !== null && score !== 0のみ対象（防御的プログラミング）
+  const activeResults = playerResults.filter(pr =>
+    !pr.isSpectator && pr.score !== null && pr.score !== 0
+  )
+
+  let plusPoints = 0
+  let minusPoints = 0
+
+  activeResults.forEach(pr => {
+    const score = pr.score!  // filterで null と 0 は除外済み
+    if (score > 0) {
+      plusPoints += score
+    } else {
+      minusPoints += score // 負の値
+    }
+  })
+
+  return {
+    plusPoints,
+    minusPoints,
+    pointBalance: plusPoints + minusPoints
+  }
+}
+
+/**
+ * チップ統計を計算
+ */
+export function calculateChipStatistics(
+  sessions: Array<{ totalChips: number }>
+): ChipStatistics {
+  const totalChips = sessions.reduce((sum, session) => sum + session.totalChips, 0)
+
+  return { totalChips }
+}
+
+// ========================================
+// Filter Functions (Phase 5-2: フィルター機能)
+// ========================================
+
+/**
+ * 期間でセッションをフィルター
+ */
+export function filterSessionsByPeriod<T extends { session: { date: string } }>(
+  sessions: T[],
+  period: PeriodType
+): T[] {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1 // 1-12
+
+  switch (period) {
+    case 'this-month': {
+      const targetYearMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}`
+      return sessions.filter(s => s.session.date.startsWith(targetYearMonth))
+    }
+    case 'this-year': {
+      const targetYear = `${currentYear}`
+      return sessions.filter(s => s.session.date.startsWith(targetYear))
+    }
+    case 'all-time': {
+      return sessions
+    }
+    default: {
+      // 'year-YYYY' 形式
+      if (period.startsWith('year-')) {
+        const year = period.substring(5) // 'year-2024' → '2024'
+        return sessions.filter(s => s.session.date.startsWith(year))
+      }
+      return sessions
+    }
+  }
+}
+
+/**
+ * モードでセッションをフィルター
+ */
+export function filterSessionsByMode<T extends { session: { mode: GameMode } }>(
+  sessions: T[],
+  mode: GameMode | 'all'
+): T[] {
+  if (mode === 'all') {
+    return sessions
+  }
+  return sessions.filter(s => s.session.mode === mode)
 }

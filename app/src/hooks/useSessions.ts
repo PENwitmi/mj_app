@@ -1,20 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
-import type { Session } from '@/lib/db'
+import type { Session, Hanchan, PlayerResult } from '@/lib/db'
 import { calculateSessionSummary, type SessionSummary } from '@/lib/session-utils'
 import { logger } from '@/lib/logger'
 
 export interface SessionWithSummary {
   session: Session
   summary: SessionSummary
+  hanchans?: Array<Hanchan & { players: PlayerResult[] }>
 }
 
 /**
  * セッション一覧管理カスタムフック
  * 全セッション + サマリー情報を管理
+ * @param mainUserId メインユーザーID
+ * @param options オプション
+ * @param options.includeHanchans hanchansデータを含めるかどうか（デフォルト: false）
  */
-export function useSessions(mainUserId: string) {
+export function useSessions(mainUserId: string, options?: { includeHanchans?: boolean }) {
   const [sessions, setSessions] = useState<SessionWithSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -40,16 +44,27 @@ export function useSessions(mainUserId: string) {
         const sessionsWithSummary = await Promise.all(
           allSessions.map(async (session: Session) => {
             try {
+              let hanchans: Array<Hanchan & { players: PlayerResult[] }> | undefined
+
+              // hanchansデータが必要な場合は取得
+              if (options?.includeHanchans) {
+                const { getSessionWithDetails } = await import('@/lib/db-utils')
+                const sessionDetails = await getSessionWithDetails(session.id)
+                if (sessionDetails) {
+                  hanchans = sessionDetails.hanchans
+                }
+              }
+
               // 保存済みサマリーがあればそれを使用（パフォーマンス最適化）
               if (session.summary) {
                 cachedCount++
-                return { session, summary: session.summary }
+                return { session, summary: session.summary, hanchans }
               }
 
               // 保存済みサマリーがない場合は計算（後方互換性）
               calculatedCount++
               const summary = await calculateSessionSummary(session.id, mainUserId)
-              return { session, summary }
+              return { session, summary, hanchans }
             } catch (err) {
               logger.error('Failed to calculate session summary', {
                 context: 'useSessions',
