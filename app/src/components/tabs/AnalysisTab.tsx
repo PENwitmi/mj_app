@@ -14,6 +14,7 @@ import {
   calculateChipStatistics
 } from '@/lib/db-utils'
 import { calculatePayout } from '@/lib/session-utils'
+import { logger } from '@/lib/logger'
 
 interface AnalysisTabProps {
   mainUser: User | null
@@ -44,8 +45,31 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
     let filtered = sessions
     filtered = filterSessionsByPeriod(filtered, selectedPeriod)
     filtered = filterSessionsByMode(filtered, selectedMode)
+
+    // 選択ユーザーが参加しているセッションのみに絞る
+    filtered = filtered.filter(({ hanchans }) => {
+      if (!hanchans) return false
+
+      // 半荘内の少なくとも1つに、選択ユーザーが参加していればOK
+      return hanchans.some(hanchan =>
+        hanchan.players.some(p =>
+          p.userId === selectedUserId && !p.isSpectator
+        )
+      )
+    })
+
+    logger.debug('ユーザー参加フィルター適用', {
+      context: 'AnalysisTab.filteredSessions',
+      data: {
+        userId: selectedUserId,
+        period: selectedPeriod,
+        mode: selectedMode,
+        resultCount: filtered.length
+      }
+    })
+
     return filtered
-  }, [sessions, selectedPeriod, selectedMode])
+  }, [sessions, selectedPeriod, selectedMode, selectedUserId])
 
   // hanchans収集（着順統計用）
   const hanchans = useMemo(() => {
