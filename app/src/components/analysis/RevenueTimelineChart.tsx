@@ -32,9 +32,9 @@ function prepareTimelineData(
   sessions: SessionWithSummary[],
   userId: string
 ): RevenueTimelineData[] {
-  // 1. 日付昇順ソート（時系列順）
+  // 1. 作成日時昇順ソート（入力順＝時系列順）
   const sorted = [...sessions].sort((a, b) =>
-    a.session.date.localeCompare(b.session.date)
+    a.session.createdAt.getTime() - b.session.createdAt.getTime()
   )
 
   let cumulative = 0
@@ -118,7 +118,7 @@ export function RevenueTimelineChart({
           <Tabs value={displayMode} onValueChange={(value) => setDisplayMode(value as DisplayMode)}>
             <TabsList className="h-7">
               <TabsTrigger value="session" className="text-xs h-6 px-3">
-                単発
+                個別
               </TabsTrigger>
               <TabsTrigger value="cumulative" className="text-xs h-6 px-3">
                 累積
@@ -155,14 +155,12 @@ export function RevenueTimelineChart({
               axisLine={false}
             />
 
-            {/* 参照線（y=0）- 単発モードのみ表示 */}
-            {displayMode === 'session' && (
-              <ReferenceLine
-                y={0}
-                stroke="#e5e7eb"
-                strokeDasharray="3 3"
-              />
-            )}
+            {/* 参照線（y=0） */}
+            <ReferenceLine
+              y={0}
+              stroke="#e5e7eb"
+              strokeDasharray="3 3"
+            />
 
             {/* ツールチップ */}
             <ChartTooltip
