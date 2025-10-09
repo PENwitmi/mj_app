@@ -1,0 +1,184 @@
+import { useMemo } from 'react'
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from "recharts"
+import { Card, CardContent } from "@/components/ui/card"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import type { SessionWithSummary } from '@/hooks/useSessions'
+import type { ChartConfig } from "@/components/ui/chart"
+import { calculatePayout } from '@/lib/session-utils'
+
+interface RevenueTimelineChartProps {
+  sessions: SessionWithSummary[]
+  userId: string
+  showCumulative?: boolean
+}
+
+interface RevenueTimelineData {
+  date: string
+  revenue: number
+  cumulative: number
+  label: string
+}
+
+function formatDateLabel(dateStr: string): string {
+  // "2025-10-05" → "10/05"
+  const [, month, day] = dateStr.split('-')
+  return `${month}/${day}`
+}
+
+function prepareTimelineData(
+  sessions: SessionWithSummary[],
+  userId: string
+): RevenueTimelineData[] {
+  // 1. 日付昇順ソート（時系列順）
+  const sorted = [...sessions].sort((a, b) =>
+    a.session.date.localeCompare(b.session.date)
+  )
+
+  let cumulative = 0
+
+  // 2. 各セッションの収支計算
+  return sorted.map(({ session, hanchans }) => {
+    // hanchansから対象ユーザーの収支を計算
+    let sessionRevenue = 0
+
+    hanchans?.forEach(hanchan => {
+      const userResult = hanchan.players.find(p => p.userId === userId)
+      if (userResult) {
+        // calculatePayoutで正確な収支計算（円）
+        const payout = calculatePayout(
+          userResult.score,
+          userResult.umaMark,
+          userResult.chips,
+          session.rate,
+          session.umaValue,
+          session.chipRate,
+          session.parlorFee
+        )
+        sessionRevenue += payout
+      }
+    })
+
+    // 累積収支更新
+    cumulative += sessionRevenue
+
+    return {
+      date: session.date,
+      revenue: sessionRevenue,
+      cumulative,
+      label: formatDateLabel(session.date)
+    }
+  })
+}
+
+export function RevenueTimelineChart({
+  sessions,
+  userId,
+  showCumulative = true
+}: RevenueTimelineChartProps) {
+  // データ変換
+  const chartData = useMemo(() => {
+    return prepareTimelineData(sessions, userId)
+  }, [sessions, userId])
+
+  // Chart設定
+  const chartConfig = {
+    revenue: {
+      label: "収支",
+      color: "#3b82f6" // 青色
+    },
+    cumulative: {
+      label: "累積収支",
+      color: "#10b981" // 緑色
+    }
+  } satisfies ChartConfig
+
+  // エッジケース: データなし
+  if (chartData.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          表示できるデータがありません
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-3">
+        <div className="text-sm font-semibold mb-2">📈 収支推移</div>
+
+        {/* グラフ */}
+        <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">
+          <LineChart
+            data={chartData}
+            margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+            accessibilityLayer
+          >
+            {/* グリッド（水平線のみ） */}
+            <CartesianGrid horizontal={false} />
+
+            {/* X軸（日付） */}
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 12 }}
+              interval="preserveStartEnd"
+              tickLine={false}
+              axisLine={false}
+            />
+
+            {/* Y軸（金額） */}
+            <YAxis
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value) => `${value >= 0 ? '+' : ''}${value}`}
+              tickLine={false}
+              axisLine={false}
+            />
+
+            {/* 参照線（y=0） */}
+            <ReferenceLine
+              y={0}
+              stroke="#e5e7eb"
+              strokeDasharray="3 3"
+            />
+
+            {/* ツールチップ */}
+            <ChartTooltip
+              content={<ChartTooltipContent
+                formatter={(value, name) => {
+                  const numValue = typeof value === 'number' ? value : Number(value)
+                  if (name === 'revenue') return [`${numValue >= 0 ? '+' : ''}${numValue}円`, '収支']
+                  if (name === 'cumulative') return [`${numValue >= 0 ? '+' : ''}${numValue}円`, '累積収支']
+                  return [value, name]
+                }}
+              />}
+            />
+
+            {/* 収支線（実線） */}
+            <Line
+              type="monotone"
+              dataKey="revenue"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              dot={{ r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+
+            {/* 累積収支線（破線）- オプション */}
+            {showCumulative && (
+              <Line
+                type="monotone"
+                dataKey="cumulative"
+                stroke="#10b981"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            )}
+          </LineChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  )
+}

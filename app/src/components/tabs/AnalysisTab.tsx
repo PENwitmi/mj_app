@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { AnalysisFilters } from '@/components/analysis/AnalysisFilters'
+import { RankStatisticsChart } from '@/components/analysis/RankStatisticsChart'
+import { RevenueTimelineChart } from '@/components/analysis/RevenueTimelineChart'
 import { useSessions } from '@/hooks/useSessions'
 import type { GameMode, PlayerResult, User } from '@/lib/db'
 import type { PeriodType } from '@/lib/db-utils'
@@ -190,24 +192,9 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
         </Card>
       ) : (
         <>
-          {/* 着順統計（全体モード時は非表示） */}
+          {/* 着順統計グラフ（全体モード時は非表示） */}
           {selectedMode !== 'all' && rankStats && (
-            <Card>
-              <CardContent className="p-3">
-                <div className="text-sm font-semibold mb-2">
-                  📊 着順統計（{rankStats.totalGames}半荘）
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div>1位: {rankStats.rankCounts.first}回 ({rankStats.rankRates.first.toFixed(1)}%)</div>
-                  <div>2位: {rankStats.rankCounts.second}回 ({rankStats.rankRates.second.toFixed(1)}%)</div>
-                  <div>3位: {rankStats.rankCounts.third}回 ({rankStats.rankRates.third.toFixed(1)}%)</div>
-                  {selectedMode === '4-player' && rankStats.rankCounts.fourth !== undefined && (
-                    <div>4位: {rankStats.rankCounts.fourth}回 ({rankStats.rankRates.fourth?.toFixed(1)}%)</div>
-                  )}
-                  <div className="pt-1 border-t">平均着順: {rankStats.averageRank.toFixed(2)}位</div>
-                </div>
-              </CardContent>
-            </Card>
+            <RankStatisticsChart statistics={rankStats} mode={selectedMode} />
           )}
           {selectedMode === 'all' && (
             <Card>
@@ -216,6 +203,13 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
               </CardContent>
             </Card>
           )}
+
+          {/* 収支推移グラフ */}
+          <RevenueTimelineChart
+            sessions={filteredSessions}
+            userId={selectedUserId}
+            showCumulative={true}
+          />
 
           {/* 収支統計 */}
           {revenueStats && (

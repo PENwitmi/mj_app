@@ -7,15 +7,28 @@ import { InputTab } from '@/components/tabs/InputTab'
 import { HistoryTab } from '@/components/tabs/HistoryTab'
 import { AnalysisTab } from '@/components/tabs/AnalysisTab'
 import { SettingsTab } from '@/components/tabs/SettingsTab'
+// import { LineChartTest } from '@/components/test/LineChartTest'
 import { useUsers } from '@/hooks/useUsers'
 
 function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('input')
+  const [activeTab, setActiveTab] = useState('test')
+
+  // タブ切り替えエラー対策: 一度アクティブになったタブを記録
+  const [mountedTabs, setMountedTabs] = useState<Set<string>>(new Set(['test']))
 
   // ユーザー管理を一箇所で行い、全タブで共有
   const { mainUser, activeUsers, archivedUsers, addNewUser, editUser, archiveUser, restoreUser } = useUsers()
+
+  // タブがアクティブになったら100ms遅延してmountedTabsに追加
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMountedTabs(prev => new Set([...prev, activeTab]))
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [activeTab])
 
   useEffect(() => {
     const init = async () => {
@@ -82,28 +95,47 @@ function App() {
           </TabsContent>
 
           <TabsContent value="analysis" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
-            <AnalysisTab
-              mainUser={mainUser}
-              users={activeUsers}
-              addNewUser={addNewUser}
-            />
+            <div className={activeTab !== 'analysis' ? "hidden" : ""}>
+              {mountedTabs.has('analysis') && activeTab === 'analysis' && (
+                <AnalysisTab
+                  mainUser={mainUser}
+                  users={activeUsers}
+                  addNewUser={addNewUser}
+                />
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="settings" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
-            <SettingsTab
-              mainUser={mainUser}
-              activeUsers={activeUsers}
-              archivedUsers={archivedUsers}
-              addNewUser={addNewUser}
-              editUser={editUser}
-              archiveUser={archiveUser}
-              restoreUser={restoreUser}
-            />
+            <div className={activeTab !== 'settings' ? "hidden" : ""}>
+              {mountedTabs.has('settings') && activeTab === 'settings' && (
+                <SettingsTab
+                  mainUser={mainUser}
+                  activeUsers={activeUsers}
+                  archivedUsers={archivedUsers}
+                  addNewUser={addNewUser}
+                  editUser={editUser}
+                  archiveUser={archiveUser}
+                  restoreUser={restoreUser}
+                />
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="test" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
+            <div className={activeTab !== 'test' ? "hidden" : ""}>
+              {mountedTabs.has('test') && activeTab === 'test' && (
+                <div className="p-4 text-center text-muted-foreground">
+                  TESTタブ（将来の実験用に予約済み）
+                  {/* <LineChartTest /> */}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* 下部固定タブナビゲーション */}
           <div className="fixed bottom-0 left-0 right-0 border-t bg-[#1a5c3a]">
-            <TabsList className="grid w-full grid-cols-4 h-12 rounded-none">
+            <TabsList className="grid w-full grid-cols-5 h-12 rounded-none">
               <TabsTrigger value="input" className="flex flex-col gap-0 py-1">
                 <span className="text-base leading-none">✏️</span>
                 <span className="text-xs leading-none">新規入力</span>
@@ -119,6 +151,10 @@ function App() {
               <TabsTrigger value="settings" className="flex flex-col gap-0 py-1">
                 <span className="text-base leading-none">⚙️</span>
                 <span className="text-xs leading-none">設定</span>
+              </TabsTrigger>
+              <TabsTrigger value="test" className="flex flex-col gap-0 py-1">
+                <span className="text-base leading-none">🧪</span>
+                <span className="text-xs leading-none">TEST</span>
               </TabsTrigger>
             </TabsList>
           </div>
