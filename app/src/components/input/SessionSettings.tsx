@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { UmaRule } from '@/lib/db'
+import type { UmaRule } from '@/lib/db-utils'
 
 export interface SessionSettings {
   date: string

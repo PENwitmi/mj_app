@@ -14,7 +14,7 @@ import {
   calculateAutoScore,
   UMA_MARK_OPTIONS,
 } from '@/lib/uma-utils'
-import type { GameMode, UmaMark, User } from '@/lib/db'
+import type { GameMode, UmaMark, User } from '@/lib/db-utils'
 import type { SessionSettings } from './SessionSettings'
 import type { Hanchan } from './TotalsPanel'
 

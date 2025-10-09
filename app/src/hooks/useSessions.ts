@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/lib/db'
-import type { Session, Hanchan, PlayerResult } from '@/lib/db'
+import { db } from '@/lib/db-utils'
+import type { Session, Hanchan, PlayerResult } from '@/lib/db-utils'
 import { calculateSessionSummary, type SessionSummary } from '@/lib/session-utils'
 import { logger } from '@/lib/logger'
 

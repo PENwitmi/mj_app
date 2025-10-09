@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { SessionDetailDialog } from '@/components/SessionDetailDialog'
 import { useSessions } from '@/hooks/useSessions'
-import type { User } from '@/lib/db'
+import type { User } from '@/lib/db-utils'
 import { cn } from '@/lib/utils'
 import { deleteSession } from '@/lib/db-utils'
 import { toast } from 'sonner'

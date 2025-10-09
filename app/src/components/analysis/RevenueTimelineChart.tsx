@@ -1,15 +1,18 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from "recharts"
 import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import type { SessionWithSummary } from '@/hooks/useSessions'
 import type { ChartConfig } from "@/components/ui/chart"
 import { calculatePayout } from '@/lib/session-utils'
 
+type DisplayMode = 'session' | 'cumulative'
+
 interface RevenueTimelineChartProps {
   sessions: SessionWithSummary[]
   userId: string
-  showCumulative?: boolean
+  showCumulative?: boolean  // 非推奨: 後方互換性のために残す
 }
 
 interface RevenueTimelineData {
@@ -73,8 +76,11 @@ function prepareTimelineData(
 export function RevenueTimelineChart({
   sessions,
   userId,
-  showCumulative = true
+  showCumulative: _showCumulative = true  // 使用しない（後方互換性のみ）
 }: RevenueTimelineChartProps) {
+  // 表示モード切り替え
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('session')
+
   // データ変換
   const chartData = useMemo(() => {
     return prepareTimelineData(sessions, userId)
@@ -106,13 +112,26 @@ export function RevenueTimelineChart({
   return (
     <Card>
       <CardContent className="p-3">
-        <div className="text-sm font-semibold mb-2">📈 収支推移</div>
+        {/* タイトルと切り替えタブ */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm font-semibold">📈 収支推移</div>
+          <Tabs value={displayMode} onValueChange={(value) => setDisplayMode(value as DisplayMode)}>
+            <TabsList className="h-7">
+              <TabsTrigger value="session" className="text-xs h-6 px-3">
+                単発
+              </TabsTrigger>
+              <TabsTrigger value="cumulative" className="text-xs h-6 px-3">
+                累積
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
         {/* グラフ */}
         <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">
           <LineChart
             data={chartData}
-            margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+            margin={{ left: 0, right: 10, top: 10, bottom: 10 }}
             accessibilityLayer
           >
             {/* グリッド（水平線のみ） */}
@@ -129,18 +148,21 @@ export function RevenueTimelineChart({
 
             {/* Y軸（金額） */}
             <YAxis
+              width={50}
               tick={{ fontSize: 12 }}
               tickFormatter={(value) => `${value >= 0 ? '+' : ''}${value}`}
               tickLine={false}
               axisLine={false}
             />
 
-            {/* 参照線（y=0） */}
-            <ReferenceLine
-              y={0}
-              stroke="#e5e7eb"
-              strokeDasharray="3 3"
-            />
+            {/* 参照線（y=0）- 単発モードのみ表示 */}
+            {displayMode === 'session' && (
+              <ReferenceLine
+                y={0}
+                stroke="#e5e7eb"
+                strokeDasharray="3 3"
+              />
+            )}
 
             {/* ツールチップ */}
             <ChartTooltip
@@ -154,26 +176,27 @@ export function RevenueTimelineChart({
               />}
             />
 
-            {/* 収支線（実線） */}
-            <Line
-              type="monotone"
-              dataKey="revenue"
-              stroke="#3b82f6"
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
+            {/* 単発収支線（実線） */}
+            {displayMode === 'session' && (
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            )}
 
-            {/* 累積収支線（破線）- オプション */}
-            {showCumulative && (
+            {/* 累積収支線（実線） */}
+            {displayMode === 'cumulative' && (
               <Line
                 type="monotone"
                 dataKey="cumulative"
                 stroke="#10b981"
                 strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={{ r: 3 }}
-                activeDot={{ r: 5 }}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
               />
             )}
           </LineChart>

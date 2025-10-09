@@ -8,7 +8,8 @@ import {
   restoreUser,
   updateUser
 } from '@/lib/db-utils'
-import type { User } from '@/lib/db'
+import type { User } from '@/lib/db-utils'
+import { logger } from '@/lib/logger'
 
 /**
  * ユーザー一覧管理カスタムフック
@@ -31,7 +32,10 @@ export function useUsers() {
         setActiveUsers(active)
         setArchivedUsers(archived)
       } catch (error) {
-        console.error('Failed to load users:', error)
+        logger.error('ユーザー一覧の取得に失敗しました', {
+          context: 'useUsers.loadUsers',
+          error: error as Error
+        })
       } finally {
         setLoading(false)
       }

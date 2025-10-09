@@ -1,8 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { GameMode } from '@/lib/db'
+import type { GameMode } from '@/lib/db-utils'
 import type { PeriodType } from '@/lib/db-utils'
-import type { User } from '@/lib/db'
+import type { User } from '@/lib/db-utils'
 
 interface AnalysisFiltersProps {
   selectedUserId: string

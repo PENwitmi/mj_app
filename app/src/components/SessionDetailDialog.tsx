@@ -17,7 +17,7 @@ import {
   updateSession,
   type UIHanchan
 } from '@/lib/db-utils'
-import type { Session, Hanchan, PlayerResult, User } from '@/lib/db'
+import type { Session, Hanchan, PlayerResult, User } from '@/lib/db-utils'
 import type { SessionSettings } from '@/components/input/SessionSettings'
 import { ScoreInputTable } from '@/components/input/ScoreInputTable'
 import { TotalsPanel } from '@/components/input/TotalsPanel'

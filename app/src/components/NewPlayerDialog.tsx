@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { User } from '@/lib/db'
+import type { User } from '@/lib/db-utils'
 
 interface NewPlayerDialogProps {
   open: boolean

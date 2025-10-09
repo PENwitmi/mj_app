@@ -4,7 +4,7 @@ import { AnalysisFilters } from '@/components/analysis/AnalysisFilters'
 import { RankStatisticsChart } from '@/components/analysis/RankStatisticsChart'
 import { RevenueTimelineChart } from '@/components/analysis/RevenueTimelineChart'
 import { useSessions } from '@/hooks/useSessions'
-import type { GameMode, PlayerResult, User } from '@/lib/db'
+import type { GameMode, PlayerResult, User } from '@/lib/db-utils'
 import type { PeriodType } from '@/lib/db-utils'
 import {
   filterSessionsByPeriod,
@@ -190,25 +190,6 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
         </Card>
       ) : (
         <>
-          {/* 着順統計グラフ（全体モード時は非表示） */}
-          {selectedMode !== 'all' && rankStats && (
-            <RankStatisticsChart statistics={rankStats} mode={selectedMode} />
-          )}
-          {selectedMode === 'all' && (
-            <Card>
-              <CardContent className="p-3 text-center text-sm text-muted-foreground">
-                ⚠️ 着順統計は表示されません。4人打ちと3人打ちでは着順の意味が異なるため、個別のモードタブをご覧ください。
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 収支推移グラフ */}
-          <RevenueTimelineChart
-            sessions={filteredSessions}
-            userId={selectedUserId}
-            showCumulative={true}
-          />
-
           {/* 統合統計カード（着順・収支・ポイント・チップ） */}
           {(revenueStats || pointStats || chipStats || rankStats) && (
             <Card>
@@ -289,6 +270,24 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
               </CardContent>
             </Card>
           )}
+
+          {/* 着順統計グラフ（全体モード時は非表示） */}
+          {selectedMode !== 'all' && rankStats && (
+            <RankStatisticsChart statistics={rankStats} mode={selectedMode} />
+          )}
+          {selectedMode === 'all' && (
+            <Card>
+              <CardContent className="p-3 text-center text-sm text-muted-foreground">
+                ⚠️ 着順統計は表示されません。4人打ちと3人打ちでは着順の意味が異なるため、個別のモードタブをご覧ください。
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 収支推移グラフ */}
+          <RevenueTimelineChart
+            sessions={filteredSessions}
+            userId={selectedUserId}
+          />
         </>
       )}
     </div>

@@ -24,7 +24,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { NewPlayerDialog } from '@/components/NewPlayerDialog'
-import type { UmaRule, User } from '@/lib/db'
+import type { UmaRule, User } from '@/lib/db-utils'
 import { getDefaultUmaRule, setDefaultUmaRule } from '@/lib/utils'
 
 interface SettingsTabProps {

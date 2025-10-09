@@ -8,7 +8,7 @@ import {
   SelectSeparator,
 } from '@/components/ui/select'
 import { NewPlayerDialog } from './NewPlayerDialog'
-import type { User } from '@/lib/db'
+import type { User } from '@/lib/db-utils'
 
 // 特殊な値定義
 const SPECIAL_VALUES = {
