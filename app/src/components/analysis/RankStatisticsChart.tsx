@@ -72,7 +72,7 @@ export function RankStatisticsChart({
       <CardContent className="p-3">
         <div className="space-y-2">
           <div className="text-sm font-semibold">
-            📊 着順統計（{statistics.totalGames}半荘）
+            📊 着順分布グラフ（{statistics.totalGames}半荘）
           </div>
 
           <ChartContainer config={chartConfig} className={`aspect-auto w-full ${heightClass}`}>
@@ -93,18 +93,6 @@ export function RankStatisticsChart({
               <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ChartContainer>
-
-          {/* 各着順の詳細情報 */}
-          <div className="space-y-1 text-xs text-muted-foreground">
-            {chartData.map(({ rank, count, rate }) => (
-              <div key={rank}>
-                {rank}: {count}回 ({rate.toFixed(1)}%)
-              </div>
-            ))}
-            <div className="pt-1 border-t">
-              平均着順: {statistics.averageRank.toFixed(2)}位
-            </div>
-          </div>
         </div>
       </CardContent>
     </Card>

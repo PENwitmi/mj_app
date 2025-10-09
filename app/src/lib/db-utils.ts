@@ -101,7 +101,9 @@ export interface PointStatistics {
  * チップ統計
  */
 export interface ChipStatistics {
-  totalChips: number         // 総チップ獲得枚数
+  plusChips: number          // プラスチップ合計
+  minusChips: number         // マイナスチップ合計
+  chipBalance: number        // チップ収支（plusChips + minusChips）
 }
 
 /**
@@ -1306,11 +1308,24 @@ export function calculatePointStatistics(
  * チップ統計を計算
  */
 export function calculateChipStatistics(
-  sessions: Array<{ totalChips: number }>
+  playerResults: PlayerResult[]
 ): ChipStatistics {
-  const totalChips = sessions.reduce((sum, session) => sum + session.totalChips, 0)
+  let plusChips = 0
+  let minusChips = 0
 
-  return { totalChips }
+  playerResults.forEach(pr => {
+    if (pr.chips > 0) {
+      plusChips += pr.chips
+    } else if (pr.chips < 0) {
+      minusChips += pr.chips
+    }
+  })
+
+  return {
+    plusChips,
+    minusChips,
+    chipBalance: plusChips + minusChips
+  }
 }
 
 // ========================================

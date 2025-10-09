@@ -10,7 +10,8 @@ import {
   filterSessionsByPeriod,
   filterSessionsByMode,
   calculateRankStatistics,
-  calculatePointStatistics
+  calculatePointStatistics,
+  calculateChipStatistics
 } from '@/lib/db-utils'
 import { calculatePayout } from '@/lib/session-utils'
 
@@ -134,10 +135,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
       }
     })
 
-    // playerResultsからチップを計算
-    const totalChips = playerResults.reduce((sum, pr) => sum + pr.chips, 0)
-
-    return { totalChips }
+    return calculateChipStatistics(playerResults)
   }, [filteredSessions, selectedUserId])
 
   // ローディング・エラー表示
@@ -211,51 +209,82 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
             showCumulative={true}
           />
 
-          {/* 収支統計 */}
-          {revenueStats && (
+          {/* 統合統計カード（着順・収支・ポイント・チップ） */}
+          {(revenueStats || pointStats || chipStats || rankStats) && (
             <Card>
               <CardContent className="p-3">
-                <div className="text-sm font-semibold mb-2">💰 収支統計</div>
-                <div className="space-y-1 text-sm">
-                  <div className="text-blue-600">総収入: +{revenueStats.totalIncome}円</div>
-                  <div className="text-red-600">総支出: {revenueStats.totalExpense}円</div>
-                  <div className="pt-1 border-t font-bold">
-                    <span className={revenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}>
-                      総収支: {revenueStats.totalBalance >= 0 ? '+' : ''}{revenueStats.totalBalance}円
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* 着順統計 */}
+                  {selectedMode !== 'all' && rankStats ? (
+                    <div className="border-r pr-3">
+                      <div className="text-sm font-semibold mb-2">📊 着順</div>
+                      <div className="space-y-1 text-xs">
+                        <div>1位: {rankStats.rankCounts.first}回 ({rankStats.rankRates.first.toFixed(1)}%)</div>
+                        <div>2位: {rankStats.rankCounts.second}回 ({rankStats.rankRates.second.toFixed(1)}%)</div>
+                        <div>3位: {rankStats.rankCounts.third}回 ({rankStats.rankRates.third.toFixed(1)}%)</div>
+                        {selectedMode === '4-player' && rankStats.rankCounts.fourth !== undefined && (
+                          <div>4位: {rankStats.rankCounts.fourth}回 ({rankStats.rankRates.fourth?.toFixed(1)}%)</div>
+                        )}
+                        <div className="pt-1 border-t font-bold">
+                          平均: {rankStats.averageRank.toFixed(2)}位
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-r pr-3">
+                      <div className="text-xs text-muted-foreground text-center pt-6">
+                        着順統計は個別モードで表示
+                      </div>
+                    </div>
+                  )}
 
-          {/* ポイント統計 */}
-          {pointStats && (
-            <Card>
-              <CardContent className="p-3">
-                <div className="text-sm font-semibold mb-2">📈 ポイント統計</div>
-                <div className="space-y-1 text-sm">
-                  <div className="text-blue-600">プラスポイント合計: +{pointStats.plusPoints}pt</div>
-                  <div className="text-red-600">マイナスポイント合計: {pointStats.minusPoints}pt</div>
-                  <div className="pt-1 border-t font-bold">
-                    <span className={pointStats.pointBalance >= 0 ? 'text-blue-600' : 'text-red-600'}>
-                      ポイント収支: {pointStats.pointBalance >= 0 ? '+' : ''}{pointStats.pointBalance}pt
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  {/* 収支統計 */}
+                  {revenueStats && (
+                    <div>
+                      <div className="text-sm font-semibold mb-2">💰 収支</div>
+                      <div className="space-y-1 text-sm">
+                        <div className="text-blue-600">+{revenueStats.totalIncome}円</div>
+                        <div className="text-red-600">{revenueStats.totalExpense}円</div>
+                        <div className="pt-1 border-t font-bold">
+                          <span className={revenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}>
+                            {revenueStats.totalBalance >= 0 ? '+' : ''}{revenueStats.totalBalance}円
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-          {/* チップ統計 */}
-          {chipStats && (
-            <Card>
-              <CardContent className="p-3">
-                <div className="text-sm font-semibold mb-2">🎰 チップ統計</div>
-                <div className="text-sm">
-                  <span className={chipStats.totalChips >= 0 ? 'text-blue-600' : 'text-red-600'}>
-                    総チップ獲得: {chipStats.totalChips >= 0 ? '+' : ''}{chipStats.totalChips}枚
-                  </span>
+                  {/* ポイント統計 */}
+                  {pointStats && (
+                    <div className="pt-3 border-t border-r pr-3">
+                      <div className="text-sm font-semibold mb-2">📈 ポイント</div>
+                      <div className="space-y-1 text-sm">
+                        <div className="text-blue-600">+{pointStats.plusPoints}pt</div>
+                        <div className="text-red-600">{pointStats.minusPoints}pt</div>
+                        <div className="pt-1 border-t font-bold">
+                          <span className={pointStats.pointBalance >= 0 ? 'text-blue-600' : 'text-red-600'}>
+                            {pointStats.pointBalance >= 0 ? '+' : ''}{pointStats.pointBalance}pt
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* チップ統計 */}
+                  {chipStats && (
+                    <div className="pt-3 border-t">
+                      <div className="text-sm font-semibold mb-2">🎰 チップ</div>
+                      <div className="space-y-1 text-sm">
+                        <div className="text-blue-600">+{chipStats.plusChips}枚</div>
+                        <div className="text-red-600">{chipStats.minusChips}枚</div>
+                        <div className="pt-1 border-t font-bold">
+                          <span className={chipStats.chipBalance >= 0 ? 'text-blue-600' : 'text-red-600'}>
+                            {chipStats.chipBalance >= 0 ? '+' : ''}{chipStats.chipBalance}枚
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
