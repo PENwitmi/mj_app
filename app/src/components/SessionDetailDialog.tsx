@@ -21,6 +21,7 @@ import type { Session, Hanchan, PlayerResult, User } from '@/lib/db-utils'
 import type { SessionSettings } from '@/components/input/SessionSettings'
 import { ScoreInputTable } from '@/components/input/ScoreInputTable'
 import { TotalsPanel } from '@/components/input/TotalsPanel'
+import { logger } from '@/lib/logger'
 
 // getSessionWithDetailsの戻り値の型
 interface SessionWithDetails {
@@ -67,23 +68,16 @@ export function SessionDetailDialog({
 
     const loadSession = async () => {
       try {
-        console.log(`[DEBUG] 🔍 詳細ダイアログ: セッション詳細読み込み開始 (sessionId=${sessionId})`)
-        const startTime = performance.now()
-
         const data = await getSessionWithDetails(sessionId)
-
-        const totalTime = performance.now() - startTime
-
-        console.log(`[DEBUG] ✅ 詳細ダイアログ: 読み込み完了 (${totalTime.toFixed(1)}ms)`, {
-          sessionId,
-          date: data?.session.date,
-          hanchanCount: data?.hanchans.length,
-          playerCount: data?.hanchans[0]?.players.length
-        })
 
         setSessionData(data)
       } catch (err) {
-        console.error('Failed to load session:', err)
+        const error = err instanceof Error ? err : new Error('Failed to load session details')
+        logger.error('セッション詳細の読み込みに失敗しました', {
+          context: 'SessionDetailDialog.loadSession',
+          data: { sessionId },
+          error
+        })
       }
     }
 

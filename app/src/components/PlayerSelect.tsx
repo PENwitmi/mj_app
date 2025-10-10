@@ -33,7 +33,7 @@ interface PlayerSelectProps {
  */
 export function PlayerSelect({
   value,
-  playerName: _playerName,
+  playerName: _playerName, // eslint-disable-line @typescript-eslint/no-unused-vars
   onChange,
   position,
   mainUser,

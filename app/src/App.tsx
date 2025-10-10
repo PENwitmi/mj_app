@@ -7,7 +7,7 @@ import { InputTab } from '@/components/tabs/InputTab'
 import { HistoryTab } from '@/components/tabs/HistoryTab'
 import { AnalysisTab } from '@/components/tabs/AnalysisTab'
 import { SettingsTab } from '@/components/tabs/SettingsTab'
-// import { LineChartTest } from '@/components/test/LineChartTest'
+import { TestTab } from '@/components/tabs/TestTab'
 import { useUsers } from '@/hooks/useUsers'
 
 function App() {
@@ -125,10 +125,11 @@ function App() {
           <TabsContent value="test" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
             <div className={activeTab !== 'test' ? "hidden" : ""}>
               {mountedTabs.has('test') && activeTab === 'test' && (
-                <div className="p-4 text-center text-muted-foreground">
-                  TESTタブ（将来の実験用に予約済み）
-                  {/* <LineChartTest /> */}
-                </div>
+                <TestTab
+                  mainUser={mainUser}
+                  users={activeUsers}
+                  addNewUser={addNewUser}
+                />
               )}
             </div>
           </TabsContent>

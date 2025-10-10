@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { AnalysisFilters } from '@/components/analysis/AnalysisFilters'
-import { RankStatisticsChart } from '@/components/analysis/RankStatisticsChart'
+// import { RankStatisticsChart } from '@/components/analysis/RankStatisticsChart'  // 横向き棒グラフ（円グラフに移行）
+import { RankStatisticsChartPiePrototype } from '@/components/test/RankStatisticsChartPiePrototype'  // 円グラフ
 import { RevenueTimelineChart } from '@/components/analysis/RevenueTimelineChart'
 import { useSessions } from '@/hooks/useSessions'
 import type { GameMode, PlayerResult, User } from '@/lib/db-utils'
@@ -22,7 +23,7 @@ interface AnalysisTabProps {
   addNewUser: (name: string) => Promise<User>  // 将来の拡張用
 }
 
-export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: AnalysisTabProps) {
+export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: AnalysisTabProps) { // eslint-disable-line @typescript-eslint/no-unused-vars
   const { sessions, loading, error } = useSessions(mainUser?.id || '', { includeHanchans: true })
 
   // フィルターState
@@ -202,7 +203,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
 
       {/* 統計表示エリア */}
       {filteredSessions.length === 0 ? (
-        <Card>
+        <Card className="py-3">
           <CardContent className="py-12 text-center">
             <p className="text-lg font-medium text-muted-foreground mb-2">
               データがありません
@@ -216,42 +217,62 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
         <>
           {/* 統合統計カード（着順・収支・ポイント・チップ） */}
           {(revenueStats || pointStats || chipStats || rankStats) && (
-            <Card>
+            <Card className="py-3">
               <CardContent className="p-3">
-                <div className="grid grid-cols-2 gap-3">
-                  {/* 着順統計 */}
+                <div className="grid grid-cols-[11fr_9fr] gap-3">
+                  {/* 半荘着順統計 */}
                   {selectedMode !== 'all' && rankStats ? (
-                    <div className="border-r pr-3">
-                      <div className="text-sm font-semibold mb-2">📊 着順</div>
-                      <div className="space-y-1 text-xs">
-                        <div>1位: {rankStats.rankCounts.first}回 ({rankStats.rankRates.first.toFixed(1)}%)</div>
-                        <div>2位: {rankStats.rankCounts.second}回 ({rankStats.rankRates.second.toFixed(1)}%)</div>
-                        <div>3位: {rankStats.rankCounts.third}回 ({rankStats.rankRates.third.toFixed(1)}%)</div>
+                    <div className="border-r pl-2 pr-3">
+                      <div className="text-base font-semibold mb-2">📊 半荘着順</div>
+                      <div className="space-y-1 text-base">
+                        <div className="flex">
+                          <span className="w-12">1位:</span>
+                          <span className="flex-1 text-right">{rankStats.rankCounts.first}回 ({rankStats.rankRates.first.toFixed(1)}%)</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-12">2位:</span>
+                          <span className="flex-1 text-right">{rankStats.rankCounts.second}回 ({rankStats.rankRates.second.toFixed(1)}%)</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-12">3位:</span>
+                          <span className="flex-1 text-right">{rankStats.rankCounts.third}回 ({rankStats.rankRates.third.toFixed(1)}%)</span>
+                        </div>
                         {selectedMode === '4-player' && rankStats.rankCounts.fourth !== undefined && (
-                          <div>4位: {rankStats.rankCounts.fourth}回 ({rankStats.rankRates.fourth?.toFixed(1)}%)</div>
+                          <div className="flex">
+                            <span className="w-12">4位:</span>
+                            <span className="flex-1 text-right">{rankStats.rankCounts.fourth}回 ({rankStats.rankRates.fourth?.toFixed(1)}%)</span>
+                          </div>
                         )}
-                        <div className="pt-1 border-t font-bold">
-                          平均: {rankStats.averageRank.toFixed(2)}位
+                        <div className="flex pt-1 border-t font-bold">
+                          <span className="w-12">平均:</span>
+                          <span className="flex-1 text-right">{rankStats.averageRank.toFixed(2)}位</span>
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className="border-r pr-3">
                       <div className="text-xs text-muted-foreground text-center pt-6">
-                        着順統計は個別モードで表示
+                        半荘着順統計は個別モードで表示
                       </div>
                     </div>
                   )}
 
                   {/* 収支統計 */}
                   {revenueStats && (
-                    <div>
-                      <div className="text-sm font-semibold mb-2">💰 収支</div>
-                      <div className="space-y-1 text-sm">
-                        <div className="text-blue-600">+{revenueStats.totalIncome}円</div>
-                        <div className="text-red-600">{revenueStats.totalExpense}円</div>
-                        <div className="pt-1 border-t font-bold">
-                          <span className={revenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}>
+                    <div className="pl-2 pr-2">
+                      <div className="text-base font-semibold mb-2">💰 収支</div>
+                      <div className="space-y-1 text-lg">
+                        <div className="flex">
+                          <span className="w-8">+:</span>
+                          <span className="flex-1 text-right text-blue-600">+{revenueStats.totalIncome}円</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-8">-:</span>
+                          <span className="flex-1 text-right text-red-600">{revenueStats.totalExpense}円</span>
+                        </div>
+                        <div className="flex pt-1 border-t font-bold">
+                          <span className="w-8">計:</span>
+                          <span className={`flex-1 text-right ${revenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                             {revenueStats.totalBalance >= 0 ? '+' : ''}{revenueStats.totalBalance}円
                           </span>
                         </div>
@@ -261,13 +282,20 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
 
                   {/* ポイント統計 */}
                   {pointStats && (
-                    <div className="pt-3 border-t border-r pr-3">
-                      <div className="text-sm font-semibold mb-2">📈 ポイント</div>
-                      <div className="space-y-1 text-sm">
-                        <div className="text-blue-600">+{pointStats.plusPoints}pt</div>
-                        <div className="text-red-600">{pointStats.minusPoints}pt</div>
-                        <div className="pt-1 border-t font-bold">
-                          <span className={pointStats.pointBalance >= 0 ? 'text-blue-600' : 'text-red-600'}>
+                    <div className="pt-3 border-t border-r pl-2 pr-3">
+                      <div className="text-base font-semibold mb-2">📈 ポイント</div>
+                      <div className="space-y-1 text-lg">
+                        <div className="flex">
+                          <span className="w-8">+:</span>
+                          <span className="flex-1 text-right text-blue-600">+{pointStats.plusPoints}pt</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-8">-:</span>
+                          <span className="flex-1 text-right text-red-600">{pointStats.minusPoints}pt</span>
+                        </div>
+                        <div className="flex pt-1 border-t font-bold">
+                          <span className="w-8">計:</span>
+                          <span className={`flex-1 text-right ${pointStats.pointBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                             {pointStats.pointBalance >= 0 ? '+' : ''}{pointStats.pointBalance}pt
                           </span>
                         </div>
@@ -277,13 +305,20 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
 
                   {/* チップ統計 */}
                   {chipStats && (
-                    <div className="pt-3 border-t">
-                      <div className="text-sm font-semibold mb-2">🎰 チップ</div>
-                      <div className="space-y-1 text-sm">
-                        <div className="text-blue-600">+{chipStats.plusChips}枚</div>
-                        <div className="text-red-600">{chipStats.minusChips}枚</div>
-                        <div className="pt-1 border-t font-bold">
-                          <span className={chipStats.chipBalance >= 0 ? 'text-blue-600' : 'text-red-600'}>
+                    <div className="pt-3 border-t pl-2 pr-2">
+                      <div className="text-base font-semibold mb-2">🎰 チップ</div>
+                      <div className="space-y-1 text-lg">
+                        <div className="flex">
+                          <span className="w-8">+:</span>
+                          <span className="flex-1 text-right text-blue-600">+{chipStats.plusChips}枚</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-8">-:</span>
+                          <span className="flex-1 text-right text-red-600">{chipStats.minusChips}枚</span>
+                        </div>
+                        <div className="flex pt-1 border-t font-bold">
+                          <span className="w-8">計:</span>
+                          <span className={`flex-1 text-right ${chipStats.chipBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                             {chipStats.chipBalance >= 0 ? '+' : ''}{chipStats.chipBalance}枚
                           </span>
                         </div>
@@ -295,14 +330,20 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
             </Card>
           )}
 
-          {/* 着順統計グラフ（全体モード時は非表示） */}
+          {/* 半荘着順統計グラフ（全体モード時は非表示） */}
+          {/* 横向き棒グラフ（円グラフに移行）
           {selectedMode !== 'all' && rankStats && (
             <RankStatisticsChart statistics={rankStats} mode={selectedMode} />
           )}
+          */}
+          {/* 円グラフ */}
+          {selectedMode !== 'all' && rankStats && (
+            <RankStatisticsChartPiePrototype statistics={rankStats} mode={selectedMode} />
+          )}
           {selectedMode === 'all' && (
-            <Card>
+            <Card className="py-3">
               <CardContent className="p-3 text-center text-sm text-muted-foreground">
-                ⚠️ 着順統計は表示されません。4人打ちと3人打ちでは着順の意味が異なるため、個別のモードタブをご覧ください。
+                ⚠️ 半荘着順統計は表示されません。4人打ちと3人打ちでは半荘着順の意味が異なるため、個別のモードタブをご覧ください。
               </CardContent>
             </Card>
           )}

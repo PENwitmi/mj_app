@@ -28,7 +28,7 @@ export function AnalysisFilters({
   onModeChange
 }: AnalysisFiltersProps) {
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-3 space-y-3">
         {/* ユーザー選択・期間選択 */}
         <div className="grid grid-cols-2 gap-2">
@@ -38,7 +38,7 @@ export function AnalysisFilters({
             <select
               value={selectedUserId}
               onChange={(e) => onUserChange(e.target.value)}
-              className="w-full h-8 text-sm border rounded px-2"
+              className="w-full h-12 text-sm border rounded px-2"
             >
               {/* メインユーザー */}
               {mainUser && (
@@ -62,7 +62,7 @@ export function AnalysisFilters({
             <select
               value={selectedPeriod}
               onChange={(e) => onPeriodChange(e.target.value as PeriodType)}
-              className="w-full h-8 text-sm border rounded px-2"
+              className="w-full h-12 text-sm border rounded px-2"
             >
               <option value="this-month">今月</option>
               <option value="this-year">今年</option>
@@ -79,14 +79,14 @@ export function AnalysisFilters({
         {/* モードタブ */}
         <div>
           <Tabs value={selectedMode} onValueChange={(value) => onModeChange(value as GameMode | 'all')}>
-            <TabsList className="grid w-full grid-cols-3 h-8">
-              <TabsTrigger value="4-player" className="text-xs">
+            <TabsList className="grid w-full grid-cols-3 h-12">
+              <TabsTrigger value="4-player" className="py-0 text-sm">
                 4人打ち
               </TabsTrigger>
-              <TabsTrigger value="3-player" className="text-xs">
+              <TabsTrigger value="3-player" className="py-0 text-sm">
                 3人打ち
               </TabsTrigger>
-              <TabsTrigger value="all" className="text-xs">
+              <TabsTrigger value="all" className="py-0 text-sm">
                 全体
               </TabsTrigger>
             </TabsList>

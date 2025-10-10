@@ -17,6 +17,7 @@ import type { User } from '@/lib/db-utils'
 import { cn } from '@/lib/utils'
 import { deleteSession } from '@/lib/db-utils'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface HistoryTabProps {
   mainUser: User | null
@@ -46,8 +47,13 @@ export function HistoryTab({ mainUser, users, addNewUser }: HistoryTabProps) {
       setDeleteDialogOpen(false)
       setSessionToDelete(null)
     } catch (err) {
+      const error = err instanceof Error ? err : new Error('Unknown error')
+      logger.error('セッション削除に失敗しました', {
+        context: 'HistoryTab.handleDeleteConfirm',
+        data: { sessionId: sessionToDelete },
+        error
+      })
       toast.error('削除に失敗しました')
-      console.error('Failed to delete session:', err)
     }
   }
 
@@ -120,8 +126,14 @@ export function HistoryTab({ mainUser, users, addNewUser }: HistoryTabProps) {
             </CardHeader>
             <CardContent className="px-3">
               <div className="flex gap-6">
-                {/* 左側：基本情報 */}
-                <div className="flex-1 space-y-1">
+                {/* 左側：基本情報（中央揃え） */}
+                <div className="flex-1 space-y-1 text-center">
+                  {/* 総合順位（エラー値の場合は非表示） */}
+                  {summary.overallRank > 0 && (
+                    <div className="text-base font-semibold">
+                      総合順位: {summary.overallRank}位
+                    </div>
+                  )}
                   <div
                     className={cn(
                       'text-lg font-bold',
@@ -143,8 +155,8 @@ export function HistoryTab({ mainUser, users, addNewUser }: HistoryTabProps) {
                     平均: {summary.averageRank.toFixed(2)}位
                   </div>
                 </div>
-                {/* 右側：着順回数 */}
-                <div className="flex-1 space-y-1">
+                {/* 右側：着順回数（左端揃え、中央寄り配置） */}
+                <div className="flex-1 space-y-1 ml-6">
                   <div className="text-base">1位: {summary.rankCounts.first}回</div>
                   <div className="text-base">2位: {summary.rankCounts.second}回</div>
                   <div className="text-base">3位: {summary.rankCounts.third}回</div>

@@ -54,7 +54,7 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
         }))
       )
     }
-  }, [mainUser?.name])
+  }, [mainUser, mainUser?.name, hanchans.length])
 
   // 登録ユーザー名が変更されたら、該当するプレイヤー名を更新
   useEffect(() => {
@@ -75,7 +75,7 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
         }))
       )
     }
-  }, [users])
+  }, [users, hanchans.length])
 
   // モード選択時に初期データをセットアップ
   const handleModeSelect = (mode: GameMode) => {
@@ -145,8 +145,6 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
       // 1. 空ハンチャンをフィルタリング（有効なハンチャンのみ抽出）
       const validHanchans = hanchans.filter(h => !isEmptyHanchan(h))
 
-      console.log(`[DEBUG] InputTab: 総ハンチャン数=${hanchans.length}, 有効ハンチャン数=${validHanchans.length}`)
-
       // 2. バリデーション：最低1半荘の有効データが必要
       if (validHanchans.length === 0) {
         toast.error('点数が入力されていません')
@@ -181,9 +179,6 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
           })),
         })),
       }
-
-      console.log('[DEBUG] InputTab: saveDataの半荘数 =', saveData.hanchans.length)
-      console.log('[DEBUG] InputTab: 半荘番号リスト =', saveData.hanchans.map((h) => h.hanchanNumber))
 
       // DB保存（サマリーも事前計算して保存）
       await saveSessionWithSummary(saveData, mainUser!.id)

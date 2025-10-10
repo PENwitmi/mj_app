@@ -36,6 +36,7 @@ export interface SessionSummary {
     third: number;
     fourth?: number;         // 3人打ちの場合はundefined
   };
+  overallRank: number;       // セッション内総合順位（総収支ベース）
 }
 
 export interface Session {

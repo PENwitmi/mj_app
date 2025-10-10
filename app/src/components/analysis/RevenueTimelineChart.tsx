@@ -76,7 +76,7 @@ function prepareTimelineData(
 export function RevenueTimelineChart({
   sessions,
   userId,
-  showCumulative: _showCumulative = true  // 使用しない（後方互換性のみ）
+  showCumulative: _showCumulative = true  // eslint-disable-line @typescript-eslint/no-unused-vars -- 後方互換性のために残す
 }: RevenueTimelineChartProps) {
   // 表示モード切り替え
   const [displayMode, setDisplayMode] = useState<DisplayMode>('session')
@@ -101,7 +101,7 @@ export function RevenueTimelineChart({
   // エッジケース: データなし
   if (chartData.length === 0) {
     return (
-      <Card>
+      <Card className="py-3">
         <CardContent className="py-8 text-center text-sm text-muted-foreground">
           表示できるデータがありません
         </CardContent>
@@ -110,17 +110,17 @@ export function RevenueTimelineChart({
   }
 
   return (
-    <Card>
+    <Card className="py-3">
       <CardContent className="p-3">
         {/* タイトルと切り替えタブ */}
         <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-semibold">📈 収支推移</div>
+          <div className="text-base font-semibold">📈 収支推移</div>
           <Tabs value={displayMode} onValueChange={(value) => setDisplayMode(value as DisplayMode)}>
-            <TabsList className="h-7">
-              <TabsTrigger value="session" className="text-xs h-6 px-3">
+            <TabsList className="h-12 gap-2">
+              <TabsTrigger value="session" className="py-0 text-sm px-4">
                 個別
               </TabsTrigger>
-              <TabsTrigger value="cumulative" className="text-xs h-6 px-3">
+              <TabsTrigger value="cumulative" className="py-0 text-sm px-4">
                 累積
               </TabsTrigger>
             </TabsList>
