@@ -180,19 +180,6 @@ export async function calculateSessionSummary(
         totalHanchans
       : 0
 
-  // 🔍 診断ログ1: メインユーザーのtotalPayout（第1ループの結果）
-  logger.debug('🔍 診断: メインユーザー収支計算完了', {
-    context: 'session-utils.calculateSessionSummary.diagnostic',
-    data: {
-      sessionId,
-      mainUserId,
-      totalPayout,
-      totalChips,
-      averageRank,
-      hanchanCount: totalHanchans
-    }
-  })
-
   // 総合順位計算（セッション内の全プレイヤーの総収支ベース）
   const playerPayouts = new Map<string, number>()
 
@@ -221,34 +208,9 @@ export async function calculateSessionSummary(
     }
   }
 
-  // 🔍 診断ログ2: 全プレイヤーの収支Map（第2ループの結果）
-  logger.debug('🔍 診断: 全プレイヤー収支Map作成完了', {
-    context: 'session-utils.calculateSessionSummary.diagnostic',
-    data: {
-      sessionId,
-      playerPayouts: Object.fromEntries(playerPayouts),
-      playerCount: playerPayouts.size,
-      mainUserPayoutInMap: playerPayouts.get(mainUserId) || 'NOT FOUND'
-    }
-  })
-
   // 収支降順でソート（高い収支が上位）
   const sortedPlayers = Array.from(playerPayouts.entries())
     .sort((a, b) => b[1] - a[1]) // [userId, totalPayout]
-
-  // 🔍 診断ログ3: ソート後の順位付きプレイヤーリスト
-  logger.debug('🔍 診断: プレイヤー収支ソート完了', {
-    context: 'session-utils.calculateSessionSummary.diagnostic',
-    data: {
-      sessionId,
-      sortedPlayers: sortedPlayers.map(([userId, payout], index) => ({
-        rank: index + 1,
-        userId,
-        payout,
-        isMainUser: userId === mainUserId
-      }))
-    }
-  })
 
   // メインユーザーの順位を特定
   const overallRank = sortedPlayers.findIndex(
@@ -266,20 +228,6 @@ export async function calculateSessionSummary(
       }
     })
   }
-
-  // 🔍 診断ログ4: 最終結果サマリー
-  logger.debug('🔍 診断: 総合順位計算完了（最終結果）', {
-    context: 'session-utils.calculateSessionSummary.diagnostic',
-    data: {
-      sessionId,
-      mainUserId,
-      calculatedOverallRank: overallRank,
-      displayTotalPayout: totalPayout,
-      mapTotalPayout: playerPayouts.get(mainUserId),
-      payoutsMatch: totalPayout === playerPayouts.get(mainUserId),
-      findIndexResult: sortedPlayers.findIndex(([userId]) => userId === mainUserId)
-    }
-  })
 
   return {
     sessionId,

@@ -34,11 +34,19 @@ export function AnalysisFilters({
         <div className="grid grid-cols-2 gap-2">
           {/* ユーザー選択 */}
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">ユーザー</label>
+            <label
+              htmlFor="analysis-user-select"
+              className="text-xs text-muted-foreground"
+            >
+              ユーザー
+            </label>
             <select
+              id="analysis-user-select"
+              name="userId"
               value={selectedUserId}
               onChange={(e) => onUserChange(e.target.value)}
               className="w-full h-12 text-sm border rounded px-2"
+              aria-label="分析対象ユーザーを選択"
             >
               {/* メインユーザー */}
               {mainUser && (
@@ -58,11 +66,19 @@ export function AnalysisFilters({
 
           {/* 期間選択 */}
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">期間</label>
+            <label
+              htmlFor="analysis-period-select"
+              className="text-xs text-muted-foreground"
+            >
+              期間
+            </label>
             <select
+              id="analysis-period-select"
+              name="period"
               value={selectedPeriod}
               onChange={(e) => onPeriodChange(e.target.value as PeriodType)}
               className="w-full h-12 text-sm border rounded px-2"
+              aria-label="分析期間を選択"
             >
               <option value="this-month">今月</option>
               <option value="this-year">今年</option>
@@ -79,7 +95,10 @@ export function AnalysisFilters({
         {/* モードタブ */}
         <div>
           <Tabs value={selectedMode} onValueChange={(value) => onModeChange(value as GameMode | 'all')}>
-            <TabsList className="grid w-full grid-cols-3 h-12">
+            <TabsList
+              className="grid w-full grid-cols-3 h-12"
+              aria-label="ゲームモード選択"
+            >
               <TabsTrigger value="4-player" className="py-0 text-sm">
                 4人打ち
               </TabsTrigger>

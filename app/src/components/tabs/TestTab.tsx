@@ -10,7 +10,6 @@ import {
   filterSessionsByMode,
   calculateRankStatistics
 } from '@/lib/db-utils'
-import { logger } from '@/lib/logger'
 
 interface TestTabProps {
   mainUser: User | null
@@ -55,16 +54,6 @@ export function TestTab({ mainUser, users, addNewUser: _addNewUser }: TestTabPro
           p.userId === selectedUserId && !p.isSpectator
         )
       )
-    })
-
-    logger.debug('TestTab: フィルター適用', {
-      context: 'TestTab.filteredSessions',
-      data: {
-        userId: selectedUserId,
-        period: selectedPeriod,
-        mode: selectedMode,
-        resultCount: filtered.length
-      }
     })
 
     return filtered

@@ -149,48 +149,6 @@ export function SettingsTab({ mainUser, activeUsers, archivedUsers, addNewUser, 
               <div>• 2位マイナス判定: 2位が負の場合、1位のウマが増加（1位○○○）</div>
             </div>
           </div>
-
-          <div className="border rounded-lg p-4 opacity-50">
-            <h3 className="font-semibold mb-1">🎨 表示設定（今後実装予定）</h3>
-            <p className="text-sm text-muted-foreground">
-              テーマ、フォントサイズなど
-            </p>
-          </div>
-
-          <div className="border rounded-lg p-4 opacity-50">
-            <h3 className="font-semibold mb-1">💾 データ管理（今後実装予定）</h3>
-            <p className="text-sm text-muted-foreground">
-              バックアップ、エクスポートなど
-            </p>
-          </div>
-
-          <div className="border rounded-lg p-4 opacity-50">
-            <h3 className="font-semibold mb-1">ℹ️ アプリ情報（今後実装予定）</h3>
-            <p className="text-sm text-muted-foreground">
-              バージョン、利用規約など
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-destructive">開発者用</CardTitle>
-          <CardDescription>デバッグ・テスト用機能</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={async () => {
-              if (!confirm('全データを削除してリセットしますか？')) return
-              const { clearAllData } = await import('@/lib/db')
-              await clearAllData()
-              window.location.reload()
-            }}
-          >
-            全データ削除
-          </Button>
         </CardContent>
       </Card>
 
