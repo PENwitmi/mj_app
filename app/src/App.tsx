@@ -7,16 +7,16 @@ import { InputTab } from '@/components/tabs/InputTab'
 import { HistoryTab } from '@/components/tabs/HistoryTab'
 import { AnalysisTab } from '@/components/tabs/AnalysisTab'
 import { SettingsTab } from '@/components/tabs/SettingsTab'
-import { TestTab } from '@/components/tabs/TestTab'
+// import { TestTab } from '@/components/tabs/TestTab'
 import { useUsers } from '@/hooks/useUsers'
 
 function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('test')
+  const [activeTab, setActiveTab] = useState('input')
 
   // タブ切り替えエラー対策: 一度アクティブになったタブを記録
-  const [mountedTabs, setMountedTabs] = useState<Set<string>>(new Set(['test']))
+  const [mountedTabs, setMountedTabs] = useState<Set<string>>(new Set(['input']))
 
   // ユーザー管理を一箇所で行い、全タブで共有
   const { mainUser, activeUsers, archivedUsers, addNewUser, editUser, archiveUser, restoreUser } = useUsers()
@@ -122,7 +122,7 @@ function App() {
             </div>
           </TabsContent>
 
-          <TabsContent value="test" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
+          {/* <TabsContent value="test" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
             <div className={activeTab !== 'test' ? "hidden" : ""}>
               {mountedTabs.has('test') && activeTab === 'test' && (
                 <TestTab
@@ -132,11 +132,11 @@ function App() {
                 />
               )}
             </div>
-          </TabsContent>
+          </TabsContent> */}
 
           {/* 下部固定タブナビゲーション */}
           <div className="fixed bottom-0 left-0 right-0 border-t bg-[#1a5c3a]">
-            <TabsList className="grid w-full grid-cols-5 h-12 rounded-none">
+            <TabsList className="grid w-full grid-cols-4 h-12 rounded-none">
               <TabsTrigger value="input" className="flex flex-col gap-0 py-1">
                 <span className="text-base leading-none">✏️</span>
                 <span className="text-xs leading-none">新規入力</span>
@@ -153,10 +153,10 @@ function App() {
                 <span className="text-base leading-none">⚙️</span>
                 <span className="text-xs leading-none">設定</span>
               </TabsTrigger>
-              <TabsTrigger value="test" className="flex flex-col gap-0 py-1">
+              {/* <TabsTrigger value="test" className="flex flex-col gap-0 py-1">
                 <span className="text-base leading-none">🧪</span>
                 <span className="text-xs leading-none">TEST</span>
-              </TabsTrigger>
+              </TabsTrigger> */}
             </TabsList>
           </div>
         </Tabs>
