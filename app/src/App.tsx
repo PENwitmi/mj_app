@@ -137,23 +137,23 @@ function App() {
           {/* 下部固定タブナビゲーション */}
           <div className="fixed bottom-0 left-0 right-0 border-t bg-[#1a5c3a]">
             <TabsList className="grid w-full grid-cols-4 h-12 rounded-none">
-              <TabsTrigger value="input" className="flex flex-col gap-0 py-1">
+              <TabsTrigger value="input" className="flex flex-col gap-0 py-1 text-white data-[state=active]:text-black">
                 <span className="text-base leading-none">✏️</span>
                 <span className="text-xs leading-none">新規入力</span>
               </TabsTrigger>
-              <TabsTrigger value="history" className="flex flex-col gap-0 py-1">
+              <TabsTrigger value="history" className="flex flex-col gap-0 py-1 text-white data-[state=active]:text-black">
                 <span className="text-base leading-none">📋</span>
                 <span className="text-xs leading-none">履歴</span>
               </TabsTrigger>
-              <TabsTrigger value="analysis" className="flex flex-col gap-0 py-1">
+              <TabsTrigger value="analysis" className="flex flex-col gap-0 py-1 text-white data-[state=active]:text-black">
                 <span className="text-base leading-none">📊</span>
                 <span className="text-xs leading-none">分析</span>
               </TabsTrigger>
-              <TabsTrigger value="settings" className="flex flex-col gap-0 py-1">
+              <TabsTrigger value="settings" className="flex flex-col gap-0 py-1 text-white data-[state=active]:text-black">
                 <span className="text-base leading-none">⚙️</span>
                 <span className="text-xs leading-none">設定</span>
               </TabsTrigger>
-              {/* <TabsTrigger value="test" className="flex flex-col gap-0 py-1">
+              {/* <TabsTrigger value="test" className="flex flex-col gap-0 py-1 text-white data-[state=active]:text-black">
                 <span className="text-base leading-none">🧪</span>
                 <span className="text-xs leading-none">TEST</span>
               </TabsTrigger> */}
