@@ -72,12 +72,12 @@ function App() {
 
   // ここから先は mainUser が確実に存在する（上記の条件分岐で保証済み）
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full">
       <Toaster />
       {/* メインコンテンツエリア */}
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full gap-0">
-          <TabsContent value="input" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
+          <TabsContent value="input" className="overflow-hidden px-2 pt-1 pb-tab-safe data-[state=inactive]:hidden" forceMount>
             <InputTab
               mainUser={mainUser}
               users={activeUsers}
@@ -86,7 +86,7 @@ function App() {
             />
           </TabsContent>
 
-          <TabsContent value="history" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
+          <TabsContent value="history" className="overflow-hidden px-2 pt-1 pb-tab-safe data-[state=inactive]:hidden" forceMount>
             <HistoryTab
               mainUser={mainUser}
               users={activeUsers}
@@ -94,8 +94,8 @@ function App() {
             />
           </TabsContent>
 
-          <TabsContent value="analysis" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
-            <div className={activeTab !== 'analysis' ? "hidden" : ""}>
+          <TabsContent value="analysis" className="overflow-hidden px-2 pt-1 pb-tab-safe data-[state=inactive]:hidden" forceMount>
+            <div className={activeTab !== 'analysis' ? "hidden" : "h-full"}>
               {mountedTabs.has('analysis') && activeTab === 'analysis' && (
                 <AnalysisTab
                   mainUser={mainUser}
@@ -106,8 +106,8 @@ function App() {
             </div>
           </TabsContent>
 
-          <TabsContent value="settings" className="overflow-hidden px-2 pt-1 pb-12 data-[state=inactive]:hidden" forceMount>
-            <div className={activeTab !== 'settings' ? "hidden" : ""}>
+          <TabsContent value="settings" className="overflow-hidden px-2 pt-1 pb-tab-safe data-[state=inactive]:hidden" forceMount>
+            <div className={activeTab !== 'settings' ? "hidden" : "h-full"}>
               {mountedTabs.has('settings') && activeTab === 'settings' && (
                 <SettingsTab
                   mainUser={mainUser}
@@ -135,7 +135,7 @@ function App() {
           </TabsContent> */}
 
           {/* 下部固定タブナビゲーション */}
-          <div className="fixed bottom-0 left-0 right-0 border-t bg-[#1a5c3a]">
+          <div className="fixed bottom-0 left-0 right-0 border-t bg-[#1a5c3a] bottom-tab-nav">
             <TabsList className="grid w-full grid-cols-4 h-12 rounded-none">
               <TabsTrigger value="input" className="flex flex-col gap-0 py-1 text-white data-[state=active]:text-black">
                 <span className="text-base leading-none">✏️</span>

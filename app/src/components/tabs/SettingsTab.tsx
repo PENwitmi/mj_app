@@ -111,7 +111,8 @@ export function SettingsTab({ mainUser, activeUsers, archivedUsers, addNewUser, 
   }
 
   return (
-    <div className="space-y-4">
+    <div className="h-full overflow-auto">
+      <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>設定</CardTitle>
@@ -322,6 +323,7 @@ export function SettingsTab({ mainUser, activeUsers, archivedUsers, addNewUser, 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   )
 }

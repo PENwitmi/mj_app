@@ -166,10 +166,12 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
   // ローディング・エラー表示
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="h-full overflow-auto">
+        <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="text-lg font-medium">読み込み中...</div>
           <div className="text-sm text-muted-foreground mt-2">データを取得しています</div>
+        </div>
         </div>
       </div>
     )
@@ -177,17 +179,20 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
 
   if (error) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="text-lg font-medium text-destructive">エラーが発生しました</div>
-          <div className="text-sm text-muted-foreground mt-2">{error.message}</div>
+      <div className="h-full overflow-auto">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="text-lg font-medium text-destructive">エラーが発生しました</div>
+            <div className="text-sm text-muted-foreground mt-2">{error.message}</div>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
+    <div className="h-full overflow-auto">
+      <div className="space-y-3">
       {/* フィルターエリア */}
       <AnalysisFilters
         selectedUserId={selectedUserId}
@@ -355,6 +360,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
           />
         </>
       )}
+      </div>
     </div>
   )
 }

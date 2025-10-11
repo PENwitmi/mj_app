@@ -118,9 +118,9 @@ export function ScoreInputTable({
   if (hanchans.length === 0) return null
 
   return (
-    <Card className="py-0 h-[calc(100vh-375px)] overflow-hidden shrink-0">
-      <CardContent className="p-2 flex flex-col h-full">
-        <div className="flex-1 overflow-auto">
+    <Card className="py-0 overflow-hidden flex-1 min-h-0">
+      <CardContent className="p-2 flex flex-col flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-auto">
           <table className="w-full border-collapse text-xs table-fixed">
             <thead className="sticky top-0 z-10 bg-white">
               <tr className="border-b">

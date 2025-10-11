@@ -59,10 +59,12 @@ export function HistoryTab({ mainUser, users, addNewUser }: HistoryTabProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="h-full overflow-auto">
+        <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="text-lg font-medium">読み込み中...</div>
           <div className="text-sm text-muted-foreground mt-2">セッション一覧を取得しています</div>
+        </div>
         </div>
       </div>
     )
@@ -70,10 +72,12 @@ export function HistoryTab({ mainUser, users, addNewUser }: HistoryTabProps) {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="text-lg font-medium text-destructive">エラーが発生しました</div>
-          <div className="text-sm text-muted-foreground mt-2">{error.message}</div>
+      <div className="h-full overflow-auto">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="text-lg font-medium text-destructive">エラーが発生しました</div>
+            <div className="text-sm text-muted-foreground mt-2">{error.message}</div>
+          </div>
         </div>
       </div>
     )
@@ -81,22 +85,24 @@ export function HistoryTab({ mainUser, users, addNewUser }: HistoryTabProps) {
 
   if (sessions.length === 0) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-lg font-medium text-muted-foreground mb-2">
-            まだセッションがありません
-          </p>
-          <p className="text-sm text-muted-foreground">
-            「新規入力」タブから麻雀の記録を追加しましょう
-          </p>
-        </CardContent>
-      </Card>
+      <div className="h-full overflow-auto">
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-lg font-medium text-muted-foreground mb-2">
+              まだセッションがありません
+            </p>
+            <p className="text-sm text-muted-foreground">
+              「新規入力」タブから麻雀の記録を追加しましょう
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   return (
-    <>
-      <div className="space-y-3 pb-2">
+    <div className="h-full overflow-auto">
+      <div className="space-y-3">
         {sessions.map(({ session, summary }) => (
           <Card
             key={session.id}
@@ -196,6 +202,6 @@ export function HistoryTab({ mainUser, users, addNewUser }: HistoryTabProps) {
         users={users}
         addNewUser={addNewUser}
       />
-    </>
+    </div>
   )
 }

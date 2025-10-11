@@ -234,7 +234,7 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
 
   // モード選択後はセッション入力画面を表示
   return (
-    <div className="flex flex-col gap-2 h-full">
+    <div className="flex flex-col gap-2 h-full min-h-0">
       {/* セッション設定カード */}
       <SessionSettingsCard
         settings={settings}

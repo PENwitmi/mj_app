@@ -1,9 +1,28 @@
 @import "tailwindcss";
 
+/* 全体の高さ設定 - iOSセーフエリア対応 */
+html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  height: 100%;
+}
+
 /* 索子グリーン背景 - グラデーション */
 body {
   background: linear-gradient(135deg, #1a5c3a 0%, #0f3d26 100%);
-  min-height: 100vh;
+  /* iOSセーフエリア対応 - ノッチ・Dynamic Island・ステータスバー領域を避ける */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* number input のスピナーボタンとデフォルトスペースを削除 */
@@ -21,4 +40,25 @@ input[type="number"] {
 /* number input でもtext-centerが確実に効くように */
 input[type="number"].text-center {
   text-align: center !important;
+}
+
+/* タブコンテンツのセーフエリア対応 - 下部タブナビゲーション（h-12 = 3rem）+ セーフエリア */
+.pb-tab-safe {
+  padding-bottom: calc(3rem + env(safe-area-inset-bottom));
+}
+
+/* 下部タブナビゲーション自体のセーフエリア対応 */
+.bottom-tab-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 下部固定要素の位置調整 - タブナビゲーション高さ（h-12 = 3rem）+ セーフエリア */
+.bottom-above-tab-nav {
+  bottom: calc(3rem + env(safe-area-inset-bottom));
+}
+
+/* Sonner トースト通知 - タブナビゲーションの上に配置（0.5rem = 8px の余白） */
+[data-sonner-toaster][data-y-position='bottom'] {
+  --offset-bottom: calc(3rem + env(safe-area-inset-bottom) + 0.5rem) !important;
+  --mobile-offset-bottom: calc(3rem + env(safe-area-inset-bottom) + 0.5rem) !important;
 }

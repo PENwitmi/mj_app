@@ -70,8 +70,8 @@ export function TotalsPanel({
   if (hanchans.length === 0 || !hanchans[0]?.players) return null
 
   return (
-    <div className="fixed bottom-12 left-0 right-0 px-2 pb-2 z-20">
-      <Card className="py-0 shadow-lg">
+    <div className="shrink-0">
+      <Card className="py-0 shadow-lg mb-2">
         <CardContent className="p-2">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-xs table-fixed">
