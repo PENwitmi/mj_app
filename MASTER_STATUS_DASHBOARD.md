@@ -1,6 +1,6 @@
 # 📊 麻雀アプリ - マスターステータスダッシュボード
 
-**最終更新**: 2025-10-10 05:51
+**最終更新**: 2025-10-12 10:44
 
 ---
 
@@ -14,7 +14,7 @@
 | **総ファイル数** | 36ファイル（src配下 .ts/.tsx） |
 | **総コード行数** | 6,446行 (TypeScript/TSX) |
 | **完了タスク** | Phase 1: 6/6, Phase 2: 8/8, Phase 2.5: 5/5, Phase 3: 10/10, Phase 4: 5/5, Phase 5: 10/10, 空ハンチャンフィルタリング: 4/4 (全完了) |
-| **現在のGitコミット** | b9864ed (Phase 5-8完了、未push) |
+| **現在のGitコミット** | 39b2ea0 (Phase 6: iOS対応完了) |
 
 ---
 
@@ -39,12 +39,20 @@
 ---
 
 次の候補:
-- Phase 6: Capacitor統合（iOS/Androidアプリ化）
+- Phase 4拡張: 履歴タブ総合順位機能の実装完了
+- Phase 6拡張: Android対応・ネイティブ機能実装
 - Phase 4/5のUX最適化・パフォーマンス改善
 
 ---
 
 ## ✅ 直近完了プロジェクト
+
+### Phase 6: Capacitor統合・iOS対応（2025-10-12 10:44完了）
+iOS実機・シミュレータ対応完了。safe-area対応（二重計算修正）、レイアウト修正（TotalsPanel flexbox化、各タブスクロール対応）、トースト通知上部移動、初期化画面遷移修正（useUsers手動リフレッシュ関数追加）。
+変更ファイル: App.tsx, useUsers.ts, index.css, sonner.tsx, TotalsPanel.tsx, ScoreInputTable.tsx, HistoryTab.tsx, AnalysisTab.tsx, SettingsTab.tsx。
+コミット: dbe6c95（レイアウト修正）, 39b2ea0（初期化修正・トースト位置変更）
+
+---
 
 ### Phase 5-8: 収支推移グラフUI改善（2025-10-10 02:30完了）
 累積モードy=0参照線追加、createdAtソート修正（date→タイムスタンプ、同日複数セッション対応）、ラベル"単発"→"個別"改善。
@@ -64,6 +72,7 @@ AnalysisTab filteredSessions修正（ユーザー参加チェック行49-59、lo
 
 ### 2025年10月
 
+- **Phase 6: Capacitor統合・iOS対応** (2025-10-12 10:44完了): iOS実機・シミュレータ対応、safe-area調整、レイアウト修正、トースト通知位置変更、初期化画面遷移修正。コミット: dbe6c95, 39b2ea0
 - **db-utils.ts Phase 2: ドメイン別分割** (2025-10-09 17:08完了): 1,380行を5モジュールに分割、後方互換性確保。コミット: 未コミット
 - **db-utils.ts Phase 1: デバッグログ統一** (2025-10-09 16:52完了): console.log→logger.debug（12箇所）、構造化ログ実装。コミット: 未コミット
 - **Phase 5-6: 分析タブUI最適化** (2025-10-09 16:25完了): 統計カード統合（4→1）、チップ統計形式統一、モバイルファースト化。コミット: b9864ed
@@ -123,6 +132,14 @@ AnalysisTab filteredSessions修正（ユーザー参加チェック行49-59、lo
 ---
 
 **更新履歴**:
+- 2025-10-12 10:44: Phase 6（Capacitor統合・iOS対応）完了記録
+  - iOS実機・シミュレータ対応完了
+  - safe-area二重計算修正（body padding-bottom削除）
+  - レイアウト修正：TotalsPanel flexbox化、History/Analysis/Settings各タブスクロール対応
+  - トースト通知位置変更（bottom-center → top-center）
+  - 初期化画面遷移修正（useUsers手動リフレッシュ関数追加）
+  - Capacitor設定追加（capacitor.config.json）
+  - 変更ファイル9つ、コミット2件（dbe6c95, 39b2ea0）
 - 2025-10-10 05:51: Phase 4拡張（履歴タブ総合順位機能）プロジェクト開始記録
   - 新規プロジェクトディレクトリ作成: project-docs/2025-10-10-history-overall-rank-feature/
   - 仕様書作成完了: 01-OVERALL_RANK_FEATURE_SPECIFICATION.md
