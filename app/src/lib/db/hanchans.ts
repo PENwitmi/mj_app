@@ -59,6 +59,7 @@ export async function createPlayerResult(
     umaMark,
     isSpectator: false,
     chips: 0,
+    parlorFee: 0,
     position,
     createdAt: new Date()
   };

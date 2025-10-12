@@ -217,7 +217,6 @@ export function SessionDetailDialog({
               <div>レート: {session.rate}</div>
               <div>ウマ: {session.umaValue}</div>
               <div>チップレート: {session.chipRate}</div>
-              <div>場代: {session.parlorFee}</div>
               <div>ルール: {session.umaRule === 'standard' ? '標準' : '2位マイナス'}</div>
             </div>
 
@@ -307,7 +306,6 @@ export function SessionDetailDialog({
                     className="w-16 h-6 text-sm text-center border rounded px-1"
                   />
                 </div>
-                <div>場代: {session.parlorFee}</div>
                 <div>ルール: {session.umaRule === 'standard' ? '標準' : '2位マイナス'}</div>
               </div>
             )}

@@ -70,6 +70,7 @@ export interface PlayerResult {
   umaMark: UmaMark;          // ウママーク
   isSpectator: boolean;      // 見学フラグ
   chips: number;             // チップ枚数（セッション終了後に入力）
+  parlorFee: number;         // 場代（プレイヤー個別）
   position: number;          // 列番号（0, 1, 2, 3） - InputTabでの列順を保持
   createdAt: Date;           // 作成日時
 }

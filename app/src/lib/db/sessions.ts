@@ -235,6 +235,7 @@ export async function saveSession(data: SessionSaveData): Promise<string> {
             umaMark: playerData.umaMark,
             isSpectator: playerData.isSpectator,
             chips: playerData.chips,
+            parlorFee: playerData.parlorFee,
             position: playerData.position,  // 列番号を保存
             createdAt: now
           };
@@ -468,6 +469,7 @@ export async function updateSession(
             umaMark: playerData.umaMark,
             isSpectator: playerData.isSpectator,
             chips: playerData.chips,
+            parlorFee: playerData.parlorFee,
             position: playerData.position,
             createdAt: now
           };
@@ -566,7 +568,7 @@ export function dbHanchansToUIHanchans(
         score: player.score,
         umaMark: player.umaMark,
         chips: player.chips,
-        parlorFee: 0, // UI層で設定（DBにはこのフィールドなし）
+        parlorFee: player.parlorFee || 0, // DBから読み込む（既存データは0）
         isSpectator: player.isSpectator,
         umaMarkManual: false // 編集時はリセット
       }))

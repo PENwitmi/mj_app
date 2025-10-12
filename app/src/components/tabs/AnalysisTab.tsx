@@ -11,10 +11,9 @@ import {
   filterSessionsByPeriod,
   filterSessionsByMode,
   calculateRankStatistics,
-  calculatePointStatistics,
   calculateChipStatistics
 } from '@/lib/db-utils'
-import { calculatePayout } from '@/lib/session-utils'
+import { umaMarkToValue } from '@/lib/uma-utils'
 import { logger } from '@/lib/logger'
 
 interface AnalysisTabProps {
@@ -97,6 +96,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
 
     let totalIncome = 0
     let totalExpense = 0
+    let totalParlorFee = 0
 
     // 各セッションの各半荘からselectedUserIdの収支を計算
     filteredSessions.forEach(({ session, hanchans }) => {
@@ -104,21 +104,20 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
         hanchans.forEach(hanchan => {
           const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
           if (userResult) {
-            // calculatePayoutで正確な収支（円）を計算
-            const payout = calculatePayout(
-              userResult.score,
-              userResult.umaMark,
-              userResult.chips,
-              session.rate,
-              session.umaValue,
-              session.chipRate,
-              session.parlorFee
-            )
+            // 場代を引く前の収支を計算
+            const umaPoints = umaMarkToValue(userResult.umaMark)
+            const subtotal = userResult.score + umaPoints * session.umaValue
+            const payoutBeforeParlorFee = subtotal * session.rate + userResult.chips * session.chipRate
 
-            if (payout > 0) {
-              totalIncome += payout
+            // 場代を別途集計
+            const parlorFee = userResult.parlorFee || 0
+            totalParlorFee += parlorFee
+
+            // プラス/マイナスに振り分け
+            if (payoutBeforeParlorFee > 0) {
+              totalIncome += payoutBeforeParlorFee
             } else {
-              totalExpense += payout  // 負の値
+              totalExpense += payoutBeforeParlorFee  // 負の値
             }
           }
         })
@@ -128,22 +127,43 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
     return {
       totalIncome,
       totalExpense,
-      totalBalance: totalIncome + totalExpense
+      totalParlorFee,
+      totalBalance: totalIncome + totalExpense - totalParlorFee
     }
   }, [filteredSessions, selectedUserId])
 
   const pointStats = useMemo(() => {
     if (filteredSessions.length === 0) return null
-    const playerResults: PlayerResult[] = []
-    filteredSessions.forEach(({ hanchans }) => {
+
+    let plusPoints = 0
+    let minusPoints = 0
+
+    // 各セッションの各半荘からselectedUserIdのポイント（小計）を計算
+    filteredSessions.forEach(({ session, hanchans }) => {
       if (hanchans) {
         hanchans.forEach(hanchan => {
           const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
-          if (userResult) playerResults.push(userResult)
+          if (userResult && !userResult.isSpectator && userResult.score !== null && userResult.score !== 0) {
+            // 小計 = score + umaPoints * umaValue
+            const umaPoints = umaMarkToValue(userResult.umaMark)
+            const subtotal = userResult.score + umaPoints * session.umaValue
+
+            // プラス/マイナスに振り分け
+            if (subtotal > 0) {
+              plusPoints += subtotal
+            } else {
+              minusPoints += subtotal  // 負の値
+            }
+          }
         })
       }
     })
-    return calculatePointStatistics(playerResults)
+
+    return {
+      plusPoints,
+      minusPoints,
+      pointBalance: plusPoints + minusPoints
+    }
   }, [filteredSessions, selectedUserId])
 
   const chipStats = useMemo(() => {
@@ -224,7 +244,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
           {(revenueStats || pointStats || chipStats || rankStats) && (
             <Card className="py-3">
               <CardContent className="p-3">
-                <div className="grid grid-cols-[11fr_9fr] gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {/* 半荘着順統計 */}
                   {selectedMode !== 'all' && rankStats ? (
                     <div className="border-r pl-2 pr-3">
@@ -257,7 +277,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
                   ) : (
                     <div className="border-r pr-3">
                       <div className="text-xs text-muted-foreground text-center pt-6">
-                        半荘着順統計は個別モードで表示
+                        着順統計は非表示
                       </div>
                     </div>
                   )}
@@ -268,40 +288,44 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
                       <div className="text-base font-semibold mb-2">💰 収支</div>
                       <div className="space-y-1 text-lg">
                         <div className="flex">
-                          <span className="w-8">+:</span>
-                          <span className="flex-1 text-right text-blue-600">+{revenueStats.totalIncome}円</span>
+                          <span className="w-12">+:</span>
+                          <span className="flex-1 text-right text-blue-600">+{revenueStats.totalIncome}pt</span>
                         </div>
                         <div className="flex">
-                          <span className="w-8">-:</span>
-                          <span className="flex-1 text-right text-red-600">{revenueStats.totalExpense}円</span>
+                          <span className="w-12">-:</span>
+                          <span className="flex-1 text-right text-red-600">{revenueStats.totalExpense}pt</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-12">場代:</span>
+                          <span className="flex-1 text-right text-orange-600">-{revenueStats.totalParlorFee}pt</span>
                         </div>
                         <div className="flex pt-1 border-t font-bold">
-                          <span className="w-8">計:</span>
+                          <span className="w-12">計:</span>
                           <span className={`flex-1 text-right ${revenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                            {revenueStats.totalBalance >= 0 ? '+' : ''}{revenueStats.totalBalance}円
+                            {revenueStats.totalBalance >= 0 ? '+' : ''}{revenueStats.totalBalance}pt
                           </span>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* ポイント統計 */}
+                  {/* スコア統計 */}
                   {pointStats && (
                     <div className="pt-3 border-t border-r pl-2 pr-3">
-                      <div className="text-base font-semibold mb-2">📈 ポイント</div>
+                      <div className="text-base font-semibold mb-2">📈 スコア</div>
                       <div className="space-y-1 text-lg">
                         <div className="flex">
                           <span className="w-8">+:</span>
-                          <span className="flex-1 text-right text-blue-600">+{pointStats.plusPoints}pt</span>
+                          <span className="flex-1 text-right text-blue-600">+{pointStats.plusPoints}点</span>
                         </div>
                         <div className="flex">
                           <span className="w-8">-:</span>
-                          <span className="flex-1 text-right text-red-600">{pointStats.minusPoints}pt</span>
+                          <span className="flex-1 text-right text-red-600">{pointStats.minusPoints}点</span>
                         </div>
                         <div className="flex pt-1 border-t font-bold">
                           <span className="w-8">計:</span>
                           <span className={`flex-1 text-right ${pointStats.pointBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                            {pointStats.pointBalance >= 0 ? '+' : ''}{pointStats.pointBalance}pt
+                            {pointStats.pointBalance >= 0 ? '+' : ''}{pointStats.pointBalance}点
                           </span>
                         </div>
                       </div>
@@ -347,8 +371,14 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
           )}
           {selectedMode === 'all' && (
             <Card className="py-3">
-              <CardContent className="p-3 text-center text-sm text-muted-foreground">
-                ⚠️ 半荘着順統計は表示されません。4人打ちと3人打ちでは半荘着順の意味が異なるため、個別のモードタブをご覧ください。
+              <CardContent className="p-3 text-center">
+                <div className="text-base font-semibold mb-2">着順統計は非表示</div>
+                <p className="text-sm text-muted-foreground">
+                  ⚠️ 半荘着順統計は表示されません。
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  理由：人数によって着順の意味が異なるため
+                </p>
               </CardContent>
             </Card>
           )}
