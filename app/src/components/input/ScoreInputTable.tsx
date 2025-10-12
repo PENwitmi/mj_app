@@ -122,7 +122,7 @@ export function ScoreInputTable({
       <CardContent className="p-2 flex flex-col flex-1 min-h-0">
         <div className="flex-1 min-h-0 overflow-auto">
           <table className="w-full border-collapse text-xs table-fixed">
-            <thead className="sticky top-0 z-10 bg-white">
+            <thead className="sticky top-0 z-10 bg-green-200">
               <tr className="border-b">
                 <th className="p-0.5 text-center w-4 text-muted-foreground text-[10px]">#</th>
                 {hanchans[0].players.map((player, idx) => (
@@ -148,49 +148,51 @@ export function ScoreInputTable({
               </tr>
             </thead>
             <tbody>
-              {hanchans.map((hanchan) => (
-                <tr key={hanchan.hanchanNumber} className="border-b">
+              {hanchans.map((hanchan, index) => (
+                <tr key={hanchan.hanchanNumber} className={`border-b ${index % 2 === 1 ? 'bg-green-100' : ''}`}>
                   <td className="p-0.5 text-center text-[10px] font-medium text-muted-foreground">
                     {hanchan.hanchanNumber}
                   </td>
                   {hanchan.players.map((player, playerIdx) => (
                     <td key={playerIdx} className="p-0.5">
-                      <div className="flex gap-0.5 items-center">
+                      <div className="flex flex-col gap-1">
                         <Input
                           type="number"
                           placeholder="±"
                           value={player.score ?? ''}
-                          className="h-10 text-lg text-center flex-1 min-w-0 px-0"
+                          className="h-10 text-lg text-center px-0"
                           onChange={(e) =>
                             handleScoreChange(hanchan.hanchanNumber, playerIdx, e.target.value)
                           }
                           onBlur={() => handleScoreBlur(hanchan.hanchanNumber)}
                         />
-                        <Select
-                          value={player.umaMark || 'none'}
-                          onValueChange={(value) =>
-                            handleUmaMarkChange(hanchan.hanchanNumber, playerIdx, value)
-                          }
-                        >
-                          <SelectTrigger className="h-14 text-xs border border-input bg-white hover:bg-accent w-5 px-0 [&>svg]:hidden whitespace-pre-line leading-[0.9] py-0.5 text-center ml-0.5 justify-center">
-                            <SelectValue placeholder="─">
-                              {player.umaMark
-                                ? UMA_MARK_OPTIONS.find((o) => o.value === player.umaMark)?.display
-                                : '─'}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {UMA_MARK_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.value || 'none'}
-                                value={option.value || 'none'}
-                                className="whitespace-pre-line leading-[0.9] text-center py-1"
-                              >
-                                {option.display}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex justify-end">
+                          <Select
+                            value={player.umaMark || 'none'}
+                            onValueChange={(value) =>
+                              handleUmaMarkChange(hanchan.hanchanNumber, playerIdx, value)
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs border border-input hover:bg-accent px-2 [&>svg]:hidden justify-center w-2/3">
+                              <SelectValue placeholder="─">
+                                {player.umaMark
+                                  ? UMA_MARK_OPTIONS.find((o) => o.value === player.umaMark)?.label
+                                  : '─'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {UMA_MARK_OPTIONS.map((option) => (
+                                <SelectItem
+                                  key={option.value || 'none'}
+                                  value={option.value || 'none'}
+                                  className="text-center py-2 cursor-pointer tracking-tighter"
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </td>
                   ))}

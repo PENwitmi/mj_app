@@ -41,9 +41,9 @@ export function SessionSettingsCard({
             />
           </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-5 text-xs px-1.5"
+            className="h-7 text-xs px-1.5"
             onClick={onModeChange}
           >
             モード変更
