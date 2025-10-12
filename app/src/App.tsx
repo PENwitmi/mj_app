@@ -19,7 +19,7 @@ function App() {
   const [mountedTabs, setMountedTabs] = useState<Set<string>>(new Set(['input']))
 
   // ユーザー管理を一箇所で行い、全タブで共有
-  const { mainUser, activeUsers, archivedUsers, addNewUser, editUser, archiveUser, restoreUser } = useUsers()
+  const { mainUser, activeUsers, archivedUsers, addNewUser, editUser, archiveUser, restoreUser, refreshUsers } = useUsers()
 
   // タブがアクティブになったら100ms遅延してmountedTabsに追加
   useEffect(() => {
@@ -35,6 +35,8 @@ function App() {
       try {
         // アプリ初期化（メインユーザー作成）
         await initializeApp()
+        // ユーザー情報を再取得（メインユーザーが作成されたことを反映）
+        await refreshUsers()
         setLoading(false)
       } catch (err) {
         setError(err instanceof Error ? err.message : '初期化エラー')
@@ -43,6 +45,7 @@ function App() {
     }
 
     init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // DB初期化 または mainUser取得が完了するまで待機

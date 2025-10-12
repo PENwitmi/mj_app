@@ -57,8 +57,8 @@ input[type="number"].text-center {
   bottom: calc(3rem + env(safe-area-inset-bottom));
 }
 
-/* Sonner トースト通知 - タブナビゲーションの上に配置（0.5rem = 8px の余白） */
-[data-sonner-toaster][data-y-position='bottom'] {
-  --offset-bottom: calc(3rem + env(safe-area-inset-bottom) + 0.5rem) !important;
-  --mobile-offset-bottom: calc(3rem + env(safe-area-inset-bottom) + 0.5rem) !important;
+/* Sonner トースト通知 - 画面上部に配置（0.5rem = 8px の余白） */
+[data-sonner-toaster][data-y-position='top'] {
+  --offset-top: calc(env(safe-area-inset-top) + 0.5rem) !important;
+  --mobile-offset-top: calc(env(safe-area-inset-top) + 0.5rem) !important;
 }

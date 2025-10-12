@@ -21,26 +21,30 @@ export function useUsers() {
   const [archivedUsers, setArchivedUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const main = await getMainUser()
-        const active = await getRegisteredUsers()  // アクティブのみ
-        const archived = await getArchivedUsers()
+  /**
+   * ユーザー一覧をDBから再取得して状態を更新
+   * 初期化後やデータ変更時に呼び出す
+   */
+  const loadUsers = async () => {
+    try {
+      const main = await getMainUser()
+      const active = await getRegisteredUsers()  // アクティブのみ
+      const archived = await getArchivedUsers()
 
-        setMainUser(main ?? null)
-        setActiveUsers(active)
-        setArchivedUsers(archived)
-      } catch (error) {
-        logger.error('ユーザー一覧の取得に失敗しました', {
-          context: 'useUsers.loadUsers',
-          error: error as Error
-        })
-      } finally {
-        setLoading(false)
-      }
+      setMainUser(main ?? null)
+      setActiveUsers(active)
+      setArchivedUsers(archived)
+    } catch (error) {
+      logger.error('ユーザー一覧の取得に失敗しました', {
+        context: 'useUsers.loadUsers',
+        error: error as Error
+      })
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     loadUsers()
   }, [])
 
@@ -114,5 +118,6 @@ export function useUsers() {
     editUser,
     archiveUser: archiveUserAction,  // 旧removeUserをarchiveUserに変更
     restoreUser: restoreUserAction,  // 新規追加
+    refreshUsers: loadUsers,  // 手動リフレッシュ関数
   }
 }
