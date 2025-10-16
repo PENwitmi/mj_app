@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import type { GameMode, User } from '@/lib/db-utils'
-import { getDefaultUmaRule } from '@/lib/utils'
+import { getDefaultUmaRule, type UmaRuleChangedEventDetail } from '@/lib/utils'
 import { saveSessionWithSummary } from '@/lib/session-utils'
 import type { SessionSaveData } from '@/lib/db-utils'
 import { getInitialPlayerNames, createInitialPlayerResult } from '@/lib/uma-utils'
@@ -32,12 +32,32 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
   const [settings, setSettings] = useState<SessionSettings>(DEFAULT_SETTINGS)
   const [hanchans, setHanchans] = useState<Hanchan[]>([])
 
-  // コンポーネントマウント時にlocalStorageから最新のウマルールを取得
+  // ウマルール変更のリアルタイム反映
   useEffect(() => {
+    // 初回マウント時にlocalStorageから取得
     setSettings((prev) => ({
       ...prev,
       umaRule: getDefaultUmaRule(),
     }))
+
+    // カスタムイベントリスナー（設定タブでの変更を検知）
+    const handleUmaRuleChange = (e: CustomEvent<UmaRuleChangedEventDetail>) => {
+      const newRule = e.detail.umaRule
+      setSettings((prev) => ({
+        ...prev,
+        umaRule: newRule,
+      }))
+
+      // ユーザー通知
+      const ruleName = newRule === 'standard' ? '標準ルール' : '2位マイナス判定'
+      toast.info(`ウマルールが「${ruleName}」に変更されました。次の半荘から新しいルールが適用されます。`)
+    }
+
+    window.addEventListener('umaRuleChanged', handleUmaRuleChange as EventListener)
+
+    return () => {
+      window.removeEventListener('umaRuleChanged', handleUmaRuleChange as EventListener)
+    }
   }, [])
 
   // メインユーザー名が変更されたら、既存の半荘データの1列目を更新

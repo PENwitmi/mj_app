@@ -23,6 +23,12 @@ export function getDefaultUmaRule(): UmaRule {
   if (stored === 'standard' || stored === 'second-minus') {
     return stored
   }
+
+  // 無効な値の場合は修正
+  if (stored !== null) {
+    console.warn(`Invalid uma rule in localStorage: ${stored}. Resetting to 'standard'.`)
+  }
+  setDefaultUmaRule('standard')
   return 'standard'
 }
 
@@ -32,4 +38,31 @@ export function getDefaultUmaRule(): UmaRule {
  */
 export function setDefaultUmaRule(rule: UmaRule): void {
   localStorage.setItem(STORAGE_KEYS.DEFAULT_UMA_RULE, rule)
+
+  // カスタムイベントを発火（リアルタイム反映用）
+  window.dispatchEvent(
+    new CustomEvent('umaRuleChanged', {
+      detail: { umaRule: rule },
+    })
+  )
+}
+
+// ========================================
+// Type Definitions for Custom Events
+// ========================================
+
+/**
+ * ウマルール変更イベントの詳細型
+ */
+export interface UmaRuleChangedEventDetail {
+  umaRule: UmaRule
+}
+
+/**
+ * カスタムイベント型拡張
+ */
+declare global {
+  interface WindowEventMap {
+    umaRuleChanged: CustomEvent<UmaRuleChangedEventDetail>
+  }
 }
