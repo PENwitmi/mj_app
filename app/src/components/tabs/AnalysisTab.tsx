@@ -124,12 +124,14 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
       }
     })
 
-    return {
+    const result = {
       totalIncome,
       totalExpense,
       totalParlorFee,
       totalBalance: totalIncome + totalExpense - totalParlorFee
     }
+
+    return result
   }, [filteredSessions, selectedUserId])
 
   const pointStats = useMemo(() => {
@@ -297,7 +299,14 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
                         </div>
                         <div className="flex">
                           <span className="w-12">場代:</span>
-                          <span className="flex-1 text-right text-orange-600">-{revenueStats.totalParlorFee}pt</span>
+                          <span className={`flex-1 text-right ${revenueStats.totalParlorFee <= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                            {(() => {
+                              const value = Math.abs(revenueStats.totalParlorFee);
+                              if (revenueStats.totalParlorFee > 0) return `-${value}pt`;
+                              if (revenueStats.totalParlorFee < 0) return `+${value}pt`;
+                              return `${value}pt`;
+                            })()}
+                          </span>
                         </div>
                         <div className="flex pt-1 border-t font-bold">
                           <span className="w-12">計:</span>
@@ -377,7 +386,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
                   ⚠️ 半荘着順統計は表示されません。
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  理由：人数によって着順の意味が異なるため
+                  （人数によって着順の意味が異なるため）
                 </p>
               </CardContent>
             </Card>

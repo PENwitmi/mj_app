@@ -1,6 +1,6 @@
 # 📊 麻雀アプリ - マスターステータスダッシュボード
 
-**最終更新**: 2025-10-12 11:42
+**最終更新**: 2025-10-12 17:30
 
 ---
 
@@ -9,121 +9,204 @@
 | 項目 | 状態 |
 |------|------|
 | **開始日** | 2025-10-03 00:17 |
-| **総フェーズ数** | 5 (Phase 5-6完了) + バグ修正1件 |
-| **総ドキュメント数** | 27 (設計9 + 実装12 + バグ修正3 + 開発知見1 + 新規機能2) |
-| **総ファイル数** | 36ファイル（src配下 .ts/.tsx） |
-| **総コード行数** | 6,446行 (TypeScript/TSX) |
-| **完了タスク** | Phase 1: 6/6, Phase 2: 8/8, Phase 2.5: 5/5, Phase 3: 10/10, Phase 4: 5/5, Phase 5: 10/10, 空ハンチャンフィルタリング: 4/4 (全完了) |
-| **現在のGitコミット** | 39b2ea0 (Phase 6: iOS対応完了) |
+| **現在のフェーズ** | Phase 6完了 → Phase 7（テスト・最適化）準備中 |
+| **総フェーズ数** | 6（Phase 1-6全完了） + バグ修正・機能追加複数件 |
+| **総ドキュメント数** | 27+ (設計9 + 実装12 + バグ修正3 + 開発知見1 + 新規機能2) |
+| **総ファイル数** | 44ファイル（src配下 .ts/.tsx） |
+| **総コード行数** | 7,336行 (TypeScript/TSX) |
+| **ビルドサイズ** | 961KB (minified) / 283KB (gzip) |
+| **完了タスク** | 全Phase完了、主要バグ修正完了 |
+| **現在のGitコミット** | e88ec50 (プレイヤー個別場代機能と分析タブの改善) |
 
 ---
 
 ## 🚀 現在進行中のプロジェクト
 
-### プレイヤー別場代フィールド追加（2025-10-12 11:42開始）
+**なし** - 全主要フェーズ完了、Phase 7（テスト・最適化）準備段階
 
-**目的**: PlayerResultに場代フィールドを追加し、編集機能と分析タブUIを改善
+### 次の候補:
+1. **Phase 7: テストコード整備**
+   - ビジネスロジックのユニットテスト（session-utils, uma-utils, validation）
+   - カスタムフックのテスト（useUsers, useSessions）
+   - 見積: 2-3日
 
-**問題点**:
-1. 編集画面で場代がリセットされる（DBに保存されていない）
-2. セッション詳細ダイアログに不要な場代表示
-3. 分析タブで場代の内訳が不明瞭
+2. **バンドルサイズ削減**
+   - 動的import実装（分析タブ、設定タブ）
+   - Tree Shaking最適化
+   - 目標: 500KB以下
+   - 見積: 1-2日
 
-**進捗**:
-- ✅ 仕様書作成完了（01-PARLOR_FEE_FEATURE_SPECIFICATION.md）
-- ⏳ 実装準備中
+3. **Phase 6拡張: Android対応**
+   - Capacitor Android設定
+   - ネイティブ機能実装
+   - 見積: 3-5日
 
-**変更予定**:
-1. `PlayerResult`型に`parlorFee: number`フィールド追加
-2. `dbHanchansToUIHanchans`で`player.parlorFee`を読み込む
-3. セッション詳細ダイアログの場代表示削除
-4. 分析タブの収支統計を4段構成に変更（プラス/マイナス/場代/計）
-
-**ドキュメント**: `project-docs/2025-10-12-parlor-fee-per-player-feature/`
-
----
-
-### Phase 4拡張: 履歴タブ総合順位機能（2025-10-10 05:51開始）
-
-**目的**: 履歴タブにセッション内総合順位を表示
-
-**進捗**:
-- ✅ 仕様書作成完了（01-OVERALL_RANK_FEATURE_SPECIFICATION.md）
-- ⏳ 実装準備中
-
-**変更予定**:
-1. `SessionSummary`型に`overallRank`フィールド追加
-2. `calculateSessionSummary`に総合順位計算ロジック追加
-3. `saveSessionWithSummary`に事前計算処理追加
-4. `HistoryTab`左グリッドに総合順位表示追加
-
-**ドキュメント**: `project-docs/2025-10-10-history-overall-rank-feature/`
+4. **データエクスポート機能**
+   - CSV/JSON出力
+   - バックアップ・復元機能
+   - 見積: 2-3日
 
 ---
 
-次の候補:
-- プレイヤー別場代フィールド実装完了
-- Phase 4拡張: 履歴タブ総合順位機能の実装完了
-- Phase 6拡張: Android対応・ネイティブ機能実装
-- Phase 4/5のUX最適化・パフォーマンス改善
+## ✅ 直近完了プロジェクト（2週間以内）
+
+### プレイヤー個別場代機能と分析タブUI改善（2025-10-12完了）
+**目的**: PlayerResultに場代フィールド追加、収支計算ロジック改善、分析タブUI最適化
+
+**実装内容**:
+- PlayerResult型に`parlorFee: number`フィールド追加
+- 収支計算ロジック修正（プレイヤー別場代反映）
+- SessionDetailDialog改善（不要な場代表示削除）
+- 分析タブ収支統計UI改善（4段構成: プラス/マイナス/場代/計）
+
+**変更ファイル**: db.ts, session-utils.ts, SessionDetailDialog.tsx, AnalysisTab.tsx
+
+コミット: e88ec50
 
 ---
 
-## ✅ 直近完了プロジェクト
+### Input UI改善（2025-10-12完了）
+**目的**: ウママーク配置最適化、テーブル可読性向上
 
-### Phase 6: Capacitor統合・iOS対応（2025-10-12 10:44完了）
-iOS実機・シミュレータ対応完了。safe-area対応（二重計算修正）、レイアウト修正（TotalsPanel flexbox化、各タブスクロール対応）、トースト通知上部移動、初期化画面遷移修正（useUsers手動リフレッシュ関数追加）。
-変更ファイル: App.tsx, useUsers.ts, index.css, sonner.tsx, TotalsPanel.tsx, ScoreInputTable.tsx, HistoryTab.tsx, AnalysisTab.tsx, SettingsTab.tsx。
-コミット: dbe6c95（レイアウト修正）, 39b2ea0（初期化修正・トースト位置変更）
+**実装内容**:
+- ウママークボタン配置改善（padding調整、視認性向上）
+- 点数入力テーブル可読性向上（ボーダー、セル幅調整）
 
----
+**変更ファイル**: ScoreInputTable.tsx
 
-### Phase 5-8: 収支推移グラフUI改善（2025-10-10 02:30完了）
-累積モードy=0参照線追加、createdAtソート修正（date→タイムスタンプ、同日複数セッション対応）、ラベル"単発"→"個別"改善。
-RevenueTimelineChart.tsxの3箇所修正（prepareTimelineData行35-38、TabsTrigger行120-122、ReferenceLine行158-163）。
-ファイル: RevenueTimelineChart.tsx (3箇所)。コミット: 未コミット
+コミット: 0cc85b6
 
 ---
 
-### Phase 5-7: ユーザー参加フィルタリングバグ修正（2025-10-10 01:50完了）
-分析タブで選択ユーザー不参加セッションが統計に含まれる重大バグ修正（0点誤計上防止）。3層フィルター実装（期間→モード→ユーザー参加）。
-AnalysisTab filteredSessions修正（ユーザー参加チェック行49-59、logger.debug行61-69、依存配列修正行72）。
-ファイル: AnalysisTab.tsx (行49-72修正)。コミット: 未コミット
+### Phase 6: Capacitor統合・iOS対応（2025-10-12完了）
+**目的**: iOS実機・シミュレータ対応、ネイティブアプリ化
+
+**実装内容**:
+- iOS実機・シミュレータ対応完了
+- safe-area調整（二重計算修正、body padding-bottom削除）
+- レイアウト修正（TotalsPanel flexbox化、各タブスクロール対応）
+- トースト通知位置変更（bottom-center → top-center）
+- 初期化画面遷移修正（useUsers手動リフレッシュ関数追加）
+- capacitor.config.ts設定完了
+
+**変更ファイル**: App.tsx, useUsers.ts, index.css, sonner.tsx, TotalsPanel.tsx, ScoreInputTable.tsx, HistoryTab.tsx, AnalysisTab.tsx, SettingsTab.tsx
+
+コミット: dbe6c95, 39b2ea0, c3ee428
 
 ---
 
-##  📅 月別プロジェクトアーカイブ
+### Phase 4拡張: 履歴タブ総合順位機能（2025-10-10完了）
+**目的**: セッション内総合順位の表示
+
+**実装内容**:
+- SessionSummary型に`overallRank`フィールド追加
+- `calculateSessionSummary`に総合順位計算ロジック追加（総収支ベース）
+- HistoryTab左グリッドに総合順位表示追加
+
+**変更ファイル**: db.ts, session-utils.ts, HistoryTab.tsx
+
+コミット: 15c2033
+
+---
+
+### Phase 5拡張: 収支推移グラフUI改善（2025-10-10完了）
+**目的**: グラフ視認性向上、累積モード改善
+
+**実装内容**:
+- 累積モードy=0参照線追加（視認性向上）
+- createdAtソート修正（date→タイムスタンプ、同日複数セッション対応）
+- ボタンラベル改善（"単発"→"個別"）
+
+**変更ファイル**: RevenueTimelineChart.tsx
+
+コミット: (未コミット)
+
+---
+
+### Phase 5拡張: ユーザー参加フィルタリングバグ修正（2025-10-10完了）
+**目的**: 分析タブの統計精度向上（重大バグ修正）
+
+**実装内容**:
+- 選択ユーザー不参加セッションを統計から正しく除外
+- 3層フィルター実装（期間→モード→ユーザー参加）
+- データ整合性確保（0点誤計上防止）
+
+**変更ファイル**: AnalysisTab.tsx
+
+コミット: (未コミット)
+
+---
+
+## 📅 月別プロジェクトアーカイブ
 
 ### 2025年10月
 
-- **Phase 6: Capacitor統合・iOS対応** (2025-10-12 10:44完了): iOS実機・シミュレータ対応、safe-area調整、レイアウト修正、トースト通知位置変更、初期化画面遷移修正。コミット: dbe6c95, 39b2ea0
-- **db-utils.ts Phase 2: ドメイン別分割** (2025-10-09 17:08完了): 1,380行を5モジュールに分割、後方互換性確保。コミット: 未コミット
-- **db-utils.ts Phase 1: デバッグログ統一** (2025-10-09 16:52完了): console.log→logger.debug（12箇所）、構造化ログ実装。コミット: 未コミット
-- **Phase 5-6: 分析タブUI最適化** (2025-10-09 16:25完了): 統計カード統合（4→1）、チップ統計形式統一、モバイルファースト化。コミット: b9864ed
-- **空ハンチャンフィルタリング** (2025-10-07 01:57完了): 全員0点データを保存前除外、3層チェック実装、統計精度向上。コミット: 4793601
-- **Phase 5: 分析タブ実装** (2025-10-09 16:25完了): 型定義6つ、統計関数4つ、フィルター2つ実装、全6ステージ完了。コミット: b9864ed
-- **Phase 4: 履歴タブ実装** (2025-10-05 12:08完了): 一覧・詳細・削除・編集機能、サマリー事前計算（300-800倍高速化）。コミット: bc0e505
-- **Phase 3: InputTab DB保存機能** (2025-10-04 14:40完了): toast通知、DB保存、リセット機能実装、IndexedDB永続化成功。コミット: 6f8f48f
-- **Phase 2.5: ユーザーアーカイブシステム** (2025-10-04 08:05完了): 論理削除方式、アーカイブ・復元機能実装、データ整合性確保。コミット: 次回予定
-- **Phase 2: UI実装フル完成** (2025-10-04 07:10完了): 4タブ実装、InputTab・SettingsTab完全実装、約28時間。コミット: eae3afe
-- **Phase 1: 基本実装** (2025-10-03 03:19完了): Vite+React19+TypeScript、Dexie.js、エラーハンドリング、shadcn/ui。コミット: 8855ff9
-- **Phase 0: 初期設計・要件定義** (2025-10-03 02:28完了): 設計ドキュメント9件作成、データモデル・UI設計・ルール定義完成。コミット: 設計フェーズ
+#### Phase 6関連
+- **Capacitor統合・iOS対応** (2025-10-12完了): iOS実機・シミュレータ対応、safe-area調整、レイアウト修正、トースト通知位置変更、初期化画面遷移修正。コミット: dbe6c95, 39b2ea0, c3ee428
+
+#### 機能追加・UI改善
+- **プレイヤー個別場代機能** (2025-10-12完了): PlayerResult.parlorFee追加、収支計算改善、分析タブUI改善。コミット: e88ec50
+- **Input UI改善** (2025-10-12完了): ウママーク配置最適化、テーブル可読性向上。コミット: 0cc85b6
+- **Phase 4拡張: 履歴タブ総合順位機能** (2025-10-10完了): overallRank表示。コミット: 15c2033
+
+#### Phase 5拡張・バグ修正
+- **Phase 5-8: 収支推移グラフUI改善** (2025-10-10完了): y=0参照線、createdAtソート、ラベル改善
+- **Phase 5-7: ユーザー参加フィルタリングバグ修正** (2025-10-10完了): 3層フィルター、データ整合性確保
+- **Phase 5-6: 分析タブUI最適化** (2025-10-09完了): 統計カード統合（4→1）、モバイルファースト設計。コミット: b9864ed
+
+#### リファクタリング
+- **db-utils.ts Phase 2: ドメイン別分割** (2025-10-09完了): 1,380行→5モジュール、後方互換性確保
+- **db-utils.ts Phase 1: デバッグログ統一** (2025-10-09完了): console.log→logger.debug、構造化ログ
+
+#### Phase 5: 分析タブ
+- **Phase 5完了** (2025-10-09完了): 型定義6つ、統計関数4つ、フィルター2つ実装、全6ステージ完了。コミット: b9864ed
+- **空ハンチャンフィルタリング** (2025-10-07完了): 全員0点データ保存前除外、3層チェック実装。コミット: 4793601
+
+#### Phase 4: 履歴タブ
+- **Phase 4完了** (2025-10-05完了): 一覧・詳細・削除・編集機能、サマリー事前計算（300-800倍高速化）。コミット: bc0e505
+
+#### Phase 1-3
+- **Phase 3: InputTab DB保存機能** (2025-10-04完了): toast通知、DB保存、リセット機能。コミット: 6f8f48f
+- **Phase 2.5: ユーザーアーカイブシステム** (2025-10-04完了): 論理削除方式、アーカイブ・復元機能。コミット: 次回予定
+- **Phase 2: UI実装フル完成** (2025-10-04完了): 4タブ実装、InputTab・SettingsTab完全実装、約28時間。コミット: eae3afe
+- **Phase 1: 基本実装** (2025-10-03完了): Vite+React19+TypeScript、Dexie.js、エラーハンドリング、shadcn/ui。コミット: 8855ff9
+- **Phase 0: 初期設計・要件定義** (2025-10-03完了): 設計ドキュメント9件作成、データモデル・UI設計・ルール定義完成。コミット: 設計フェーズ
 
 ---
 
 ## 🎯 次のステップ
 
-### Phase 6以降
+### Phase 7: テスト・最適化
+1. **テストコード整備**
+   - ビジネスロジックのユニットテスト
+   - カスタムフックのテスト
+   - 見積: 2-3日
 
-1. **Capacitor統合**
-   - iOS/Androidネイティブアプリ化
-   - ネイティブ機能利用（ファイルシステム、共有等）
+2. **バンドルサイズ削減**
+   - 動的import（分析タブ、設定タブ）
+   - Tree Shaking最適化
+   - 目標: 500KB以下
+   - 見積: 1-2日
 
-2. **データエクスポート機能**
+3. **パフォーマンス測定**
+   - React DevTools Profiler
+   - Lighthouseスコア計測
+
+### Phase 6拡張: モバイル対応
+1. **Android対応**
+   - Capacitor Android設定
+   - ネイティブ機能実装
+
+2. **PWA化検討**
+   - Service Worker
+   - オフライン対応
+
+### 将来構想
+1. **データエクスポート機能**
    - CSV/JSON出力
    - バックアップ・復元機能
 
-3. **高度な分析機能**
+2. **高度な分析機能**
    - 対戦相手別成績
    - 時間帯別分析
    - AI予測機能（将来構想）
@@ -133,16 +216,22 @@ AnalysisTab filteredSessions修正（ユーザー参加チェック行49-59、lo
 ## 📝 技術的な注意事項
 
 ### 解決済み問題
-
 1. **React 19 Strict Mode**: メインユーザー重複作成 → 固定ID使用で解決
 2. **IndexedDB Boolean制約**: isMainUserをインデックスに使用不可 → in-memory filteringで対応
 3. **Tailwind CSS v4**: PostCSS設定不要 → Vite plugin使用
+4. **Recharts タブ切り替えエラー**: width/height=0エラー → mountedTabs + 100ms遅延レンダリング
+5. **iOS safe-area問題**: 二重計算 → CSS変数使用、body padding-bottom削除
+6. **着順判定精度**: umaMark依存 → 点数ベース計算に変更
 
-### 未解決の検討事項
+### 現在の課題
+1. **テストコード不在**: ビジネスロジックのテストが必要
+2. **バンドルサイズ**: 961KB（目標500KB以下）
+3. **型安全性**: 1件のany型使用（TestTab.tsx）
 
+### 検討事項
 - 状態管理ライブラリ選定（Context API vs Zustand）
 - ルーティング（React Router導入の必要性）
-- Toast通知システム（shadcn/ui sonner追加）
+- 動的import（コード分割）
 
 ---
 
@@ -150,77 +239,38 @@ AnalysisTab filteredSessions修正（ユーザー参加チェック行49-59、lo
 
 - **メインドキュメント**: `CLAUDE.md`
 - **設計ドキュメント**: `project-docs/2025-10-03-initial-discussion/`
-- **実装ドキュメント**: `project-docs/2025-10-03-phase1-basic-implementation/`
+- **実装ドキュメント**: `project-docs/各フェーズディレクトリ/`
+- **Serena Memory**: `.serena/memories/`（設計パターン・教訓）
 - **開発サーバー**: http://localhost:5173
+- **GitHubリポジトリ**: (未設定)
+
+---
+
+## 🔄 Serena Memory更新履歴
+
+**2025-10-12 17:30**:
+- ✅ project_overview: Phase 6完了、プレイヤー別場代機能追加、統計更新
+- ✅ project_structure: db/モジュール分割反映、iOS対応追加、コンポーネント構成更新
+- ✅ database_implementation: ドメイン別分割詳細、総合順位計算、プレイヤー別場代
+- ✅ development_workflow: iOS対応ワークフロー、トラブルシューティング追加
+- ✅ ui_implementation_patterns: Rechartsパターン、safe-area対応、タブ切り替え対策
+- ✅ code_style_conventions: エラーハンドリング、ロギング、命名規則統一
 
 ---
 
 **更新履歴**:
-- 2025-10-12 11:42: プレイヤー別場代フィールド追加プロジェクト開始記録
-  - 新規プロジェクトディレクトリ作成: project-docs/2025-10-12-parlor-fee-per-player-feature/
-  - 仕様書作成完了: 01-PARLOR_FEE_FEATURE_SPECIFICATION.md
-  - 問題点: 編集画面で場代リセット、セッション詳細の不要表示、分析タブで場代不明瞭
-  - 変更予定: PlayerResult型拡張、UI修正（セッション詳細・分析タブ）
-  - 総ドキュメント数更新（26→27）、最終更新時刻更新
+- 2025-10-12 17:30: Serena Memory大規模更新（6個のメモリー最新化）、ダッシュボード全体更新
+- 2025-10-12 11:42: プレイヤー別場代フィールド追加プロジェクト記録
 - 2025-10-12 10:44: Phase 6（Capacitor統合・iOS対応）完了記録
-  - iOS実機・シミュレータ対応完了
-  - safe-area二重計算修正（body padding-bottom削除）
-  - レイアウト修正：TotalsPanel flexbox化、History/Analysis/Settings各タブスクロール対応
-  - トースト通知位置変更（bottom-center → top-center）
-  - 初期化画面遷移修正（useUsers手動リフレッシュ関数追加）
-  - Capacitor設定追加（capacitor.config.json）
-  - 変更ファイル9つ、コミット2件（dbe6c95, 39b2ea0）
 - 2025-10-10 05:51: Phase 4拡張（履歴タブ総合順位機能）プロジェクト開始記録
-  - 新規プロジェクトディレクトリ作成: project-docs/2025-10-10-history-overall-rank-feature/
-  - 仕様書作成完了: 01-OVERALL_RANK_FEATURE_SPECIFICATION.md
-  - SessionSummary型拡張、総合順位計算ロジック設計完了
-  - 実装方針決定: 事前計算方式（パフォーマンス最適化）
-  - 総ドキュメント数更新（25→26）、最終更新時刻更新
 - 2025-10-10 02:34: Phase 5-7, Phase 5-8完了記録追加
-  - Phase 5-7: ユーザー参加フィルタリングバグ修正（critical bug fix）
-    - 選択ユーザー不参加セッションを統計から正しく除外
-    - AnalysisTab filteredSessions修正、logger.debug追加
-    - データ整合性確保（3層フィルター実装）
-  - Phase 5-8: 収支推移グラフUI改善
-    - 累積モードy=0参照線追加（視認性向上）
-    - グラフデータソート修正（date→createdAt、同日複数セッション対応）
-    - ボタンラベル改善（"単発"→"個別"）
-  - 総フェーズ数更新（Phase 5-8完了）、最終更新時刻更新（2025-10-10 02:34）
-- 2025-10-09 16:52: db-utils.ts リファクタリング Phase 1完了記録（デバッグログ統一）
-  - console.log 12箇所 → logger.debug置き換え（db-utils.ts）
-  - console.error 1箇所 → logger.error置き換え（useUsers.ts）
-  - logger import追加、構造化ログ実装
-  - ビルド・テスト成功（0エラー）
+- 2025-10-09 16:52: db-utils.ts リファクタリング Phase 1完了記録
 - 2025-10-09 16:32: Phase 5-6完了記録（分析タブUI最適化）
-  - 統計カード統合（4カード→1統合カード）、着順グラフ簡素化
-  - チップ統計の表示形式統一（±合計形式）
-  - モバイルファースト設計（スペース効率向上）
-  - コード統計更新（36ファイル、6,446行）、Gitコミット: b9864ed
 - 2025-10-09 15:43: Phase 5 Stage 5-5完了記録（タブ切り替えエラー修正）
-  - Rechartsタブ切り替え時のwidth/height=0コンソールエラー完全解消
-  - Solution 1実装（mountedTabsステート + 100ms遅延レンダリング）
-  - AnalysisTab、SettingsTabに条件付きレンダリング適用
-  - 状態保持戦略確立（InputTab/HistoryTab: 状態保持、AnalysisTab/SettingsTab: 状態リセットOK）
-  - ドキュメント2件作成（実装計画 + 開発知見ガイド）
-  - LineChartTest.tsxコンポーネント削除、TESTタブはプレースホルダー化
-- 2025-10-05 20:55: Phase 5完了記録、統計サマリー更新（総コード約5,600行、30ファイル、全5フェーズ完了）
-  - Phase 5: 分析タブ実装完了（型定義6つ、統計計算関数4つ、フィルター関数2つ）
-  - AnalysisFiltersコンポーネント、AnalysisTab完全実装
-  - SessionWithSummary型拡張、useSessions hook拡張（includeHanchansオプション）
-  - 重要修正: 着順判定方法の変更（umaMark→点数ベース）
-  - 実装計画書・レビュードキュメント作成
-- 2025-10-05 11:50: Phase 4 Stage 4-5実装計画書作成完了、進行中タスク更新
-  - 編集機能実装計画書作成（05-EDIT_FEATURE_IMPLEMENTATION_PLAN.md）
-  - Phase 1-5の詳細実装計画策定（総見積7.5h）
-  - データフロー設計、型定義仕様、リスク分析、テスト戦略完成
-- 2025-10-05 09:44: Git状態の正確性確認・修正（bc0e505が最新、Stage 1-3全てコミット済み）
-- 2025-10-05 02:23: Phase 4進捗更新（Stage 1-3完了）、統計サマリー更新（コード4,385行、28ファイル）
-  - Stage 1: 履歴タブ基本実装（コミット済み 4a8b659）
-  - Stage 2: Player Order Fix（コミット済み bc0e505）
-  - Stage 3: Summary Pre-calculation（コミット済み bc0e505、パフォーマンス300-800倍高速化達成）
-- 2025-10-04 14:40: Phase 3完了記録（DB保存機能実装完了）
-- 2025-10-04 07:10: Phase 2完了記録、統計サマリー更新（コード2,467行、25ファイル）
-- 2025-10-03 16:13: レスポンシブレイアウト検証完了（iPhone SE/14/14 Pro Max対応確認）
-- 2025-10-03 09:37: 半荘追加ボタンUI改善、誤記修正（人数追加機能は未実装）
-- 2025-10-03 09:31: Phase 2進捗更新（タブレイアウト完了、InputTab実装完了）
+- 2025-10-05 20:55: Phase 5完了記録、統計サマリー更新
+- 2025-10-05 11:50: Phase 4 Stage 4-5実装計画書作成完了
+- 2025-10-05 09:44: Git状態の正確性確認・修正
+- 2025-10-05 02:23: Phase 4進捗更新（Stage 1-3完了）
+- 2025-10-04 14:40: Phase 3完了記録
+- 2025-10-04 07:10: Phase 2完了記録、統計サマリー更新
 - 2025-10-03 03:19: 初回作成、Phase 1完了記録
