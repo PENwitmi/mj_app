@@ -24,6 +24,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { NewPlayerDialog } from '@/components/NewPlayerDialog'
+import { MigrationTool } from '@/components/MigrationTool'
 import type { UmaRule, User } from '@/lib/db-utils'
 import { getDefaultUmaRule, setDefaultUmaRule } from '@/lib/utils'
 
@@ -152,6 +153,9 @@ export function SettingsTab({ mainUser, activeUsers, archivedUsers, addNewUser, 
           </div>
         </CardContent>
       </Card>
+
+      {/* データ再計算ツール */}
+      <MigrationTool />
 
       {/* ユーザー管理Dialog */}
       <Dialog open={userManagementOpen} onOpenChange={setUserManagementOpen}>
