@@ -112,6 +112,11 @@ export async function calculateSessionSummary(
   let totalPayout = 0
   let totalChips = 0
 
+  // chips/parlorFeeはセッション全体で1回のみカウント
+  let sessionChips = 0
+  let sessionParlorFee = 0
+  let chipsInitialized = false
+
   // 各半荘で着順と収支を計算
   for (const hanchan of hanchans) {
     const ranks = calculateRanks(hanchan.players)
@@ -137,6 +142,13 @@ export async function calculateSessionSummary(
         continue
       }
 
+      // 最初の有効な半荘からchips/parlorFeeを取得（1回のみ）
+      if (!chipsInitialized) {
+        sessionChips = mainUserResult.chips
+        sessionParlorFee = mainUserResult.parlorFee
+        chipsInitialized = true
+      }
+
       const rank = ranks.get(mainUserResult.id) || 0
 
       // 着順カウント
@@ -155,19 +167,17 @@ export async function calculateSessionSummary(
         })
       }
 
-      // 収支とチップを加算
-      totalPayout += calculatePayout(
-        mainUserResult.score,
-        mainUserResult.umaMark,
-        mainUserResult.chips,
-        session.rate,
-        session.umaValue,
-        session.chipRate,
-        session.parlorFee
-      )
-      totalChips += mainUserResult.chips
+      // score + umaのみの収支を計算（chips/parlorFeeは除く）
+      const umaPoints = umaMarkToValue(mainUserResult.umaMark)
+      const subtotal = mainUserResult.score + umaPoints * session.umaValue
+      const scorePayout = subtotal * session.rate
+      totalPayout += scorePayout
     }
   }
+
+  // セッション全体で1回のみchips/parlorFeeを加算
+  totalPayout += sessionChips * session.chipRate - sessionParlorFee
+  totalChips = sessionChips
 
   // 平均着順（入力済み半荘のみ）
   const totalHanchans = rankCounts.first + rankCounts.second + rankCounts.third + rankCounts.fourth
@@ -182,6 +192,8 @@ export async function calculateSessionSummary(
 
   // 総合順位計算（セッション内の全プレイヤーの総収支ベース）
   const playerPayouts = new Map<string, number>()
+  const playerChips = new Map<string, number>()
+  const playerParlorFees = new Map<string, number>()
 
   // 全プレイヤーの総収支を計算
   for (const hanchan of hanchans) {
@@ -191,21 +203,30 @@ export async function calculateSessionSummary(
         continue
       }
 
-      const payout = calculatePayout(
-        player.score,
-        player.umaMark,
-        player.chips,
-        session.rate,
-        session.umaValue,
-        session.chipRate,
-        session.parlorFee
-      )
-
-      // 未登録ユーザー（userId=null）の場合はplayerNameをキーにする
       const playerKey = player.userId ?? player.playerName
+
+      // 各プレイヤーのchips/parlorFeeを最初の半荘から取得（1回のみ）
+      if (!playerChips.has(playerKey)) {
+        playerChips.set(playerKey, player.chips)
+        playerParlorFees.set(playerKey, player.parlorFee)
+      }
+
+      // score + umaのみの収支を計算
+      const umaPoints = umaMarkToValue(player.umaMark)
+      const subtotal = player.score + umaPoints * session.umaValue
+      const scorePayout = subtotal * session.rate
+
       const currentTotal = playerPayouts.get(playerKey) || 0
-      playerPayouts.set(playerKey, currentTotal + payout)
+      playerPayouts.set(playerKey, currentTotal + scorePayout)
     }
+  }
+
+  // 各プレイヤーにセッション全体で1回のみchips/parlorFeeを加算
+  for (const [playerKey, scorePayout] of playerPayouts.entries()) {
+    const chips = playerChips.get(playerKey) || 0
+    const parlorFee = playerParlorFees.get(playerKey) || 0
+    const finalPayout = scorePayout + chips * session.chipRate - parlorFee
+    playerPayouts.set(playerKey, finalPayout)
   }
 
   // 収支降順でソート（高い収支が上位）
