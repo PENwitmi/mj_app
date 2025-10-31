@@ -58,7 +58,7 @@ export function useMigration(): UseMigrationReturn {
 
       logger.error('マイグレーション必要性チェック失敗', {
         context: 'useMigration.checkIfNeeded',
-        error: err
+        error: err as Error
       })
     }
   }, [])
@@ -117,7 +117,7 @@ export function useMigration(): UseMigrationReturn {
 
       logger.error('マイグレーション実行失敗', {
         context: 'useMigration.executeMigration',
-        error: err
+        error: err as Error
       })
     }
   }, [])

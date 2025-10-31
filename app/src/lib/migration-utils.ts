@@ -173,7 +173,7 @@ export async function checkMigrationNeeded(): Promise<boolean> {
   } catch (error) {
     logger.error('マイグレーション必要性チェック失敗', {
       context: 'migration-utils.checkMigrationNeeded',
-      error
+      error: error as Error
     })
     return false
   }
