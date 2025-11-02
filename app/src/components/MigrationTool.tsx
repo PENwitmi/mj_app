@@ -6,13 +6,17 @@ import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { CheckCircle2, XCircle, AlertCircle, Database } from 'lucide-react'
+import type { User } from '@/lib/db'
+import { logger } from '@/lib/logger'
 
-const MAIN_USER_ID = 'main-user-fixed-id'
+interface MigrationToolProps {
+  mainUser: User | null
+}
 
 /**
  * データ再計算（マイグレーション）ツールコンポーネント
  */
-export function MigrationTool() {
+export function MigrationTool({ mainUser }: MigrationToolProps) {
   const {
     status,
     progress,
@@ -39,7 +43,15 @@ export function MigrationTool() {
   // 確認ダイアログでOK
   const handleConfirmExecute = async () => {
     setShowConfirmDialog(false)
-    await executeMigration(MAIN_USER_ID)
+
+    if (!mainUser) {
+      logger.error('メインユーザーが見つかりません', {
+        context: 'MigrationTool.handleConfirmExecute'
+      })
+      return
+    }
+
+    await executeMigration(mainUser.id)
   }
 
   // リセットボタン

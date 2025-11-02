@@ -10,8 +10,7 @@ import type { PeriodType } from '@/lib/db-utils'
 import {
   filterSessionsByPeriod,
   filterSessionsByMode,
-  calculateRankStatistics,
-  calculateChipStatistics
+  calculateRankStatistics
 } from '@/lib/db-utils'
 import { umaMarkToValue } from '@/lib/uma-utils'
 import { logger } from '@/lib/logger'
@@ -27,7 +26,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
 
   // フィルターState
   const [selectedUserId, setSelectedUserId] = useState<string>(mainUser?.id || '')
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('this-month')
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('all-time')
   const [selectedMode, setSelectedMode] = useState<GameMode | 'all'>('4-player')
 
   // 利用可能な年リストを生成（セッションデータから）
@@ -98,41 +97,29 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
     let totalExpense = 0
     let totalParlorFee = 0
 
-    // 各セッションの各半荘からselectedUserIdの収支を計算
-    filteredSessions.forEach(({ session, hanchans }) => {
-      if (hanchans) {
-        hanchans.forEach(hanchan => {
-          const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
-          if (userResult) {
-            // 場代を引く前の収支を計算
-            const umaPoints = umaMarkToValue(userResult.umaMark)
-            const subtotal = userResult.score + umaPoints * session.umaValue
-            const payoutBeforeParlorFee = subtotal * session.rate + userResult.chips * session.chipRate
+    // ✅ セッション単位で収支を集計（session.summary使用）
+    filteredSessions.forEach(({ session }) => {
+      if (session.summary) {
+        // ✅ session.summaryから全て取得（一貫性）
+        const totalPayout = session.summary.totalPayout
+        totalParlorFee += session.summary.totalParlorFee
 
-            // 場代を別途集計
-            const parlorFee = userResult.parlorFee || 0
-            totalParlorFee += parlorFee
-
-            // プラス/マイナスに振り分け
-            if (payoutBeforeParlorFee > 0) {
-              totalIncome += payoutBeforeParlorFee
-            } else {
-              totalExpense += payoutBeforeParlorFee  // 負の値
-            }
-          }
-        })
+        // ✅ セッション単位で収入/支出を振り分け（設計的に正しい）
+        if (totalPayout >= 0) {
+          totalIncome += totalPayout
+        } else {
+          totalExpense += totalPayout
+        }
       }
     })
 
-    const result = {
+    return {
       totalIncome,
       totalExpense,
-      totalParlorFee,
-      totalBalance: totalIncome + totalExpense - totalParlorFee
+      totalParlorFee,  // ✅ UI表示用に保持（4行構造維持）
+      totalBalance: totalIncome + totalExpense  // totalPayoutには既にparlorFee含まれるため再度引かない
     }
-
-    return result
-  }, [filteredSessions, selectedUserId])
+  }, [filteredSessions])
 
   const pointStats = useMemo(() => {
     if (filteredSessions.length === 0) return null
@@ -171,19 +158,28 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
   const chipStats = useMemo(() => {
     if (filteredSessions.length === 0) return null
 
-    // selectedUserIdのplayerResultsを収集
-    const playerResults: PlayerResult[] = []
-    filteredSessions.forEach(({ hanchans }) => {
-      if (hanchans) {
-        hanchans.forEach(hanchan => {
-          const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
-          if (userResult) playerResults.push(userResult)
-        })
+    let plusChips = 0
+    let minusChips = 0
+
+    // ✅ セッション単位でチップを集計（session.summary使用）
+    filteredSessions.forEach(({ session }) => {
+      if (session.summary) {
+        const chips = session.summary.totalChips
+
+        if (chips >= 0) {
+          plusChips += chips
+        } else {
+          minusChips += chips
+        }
       }
     })
 
-    return calculateChipStatistics(playerResults)
-  }, [filteredSessions, selectedUserId])
+    return {
+      plusChips,
+      minusChips,
+      chipBalance: plusChips + minusChips
+    }
+  }, [filteredSessions])
 
   // ローディング・エラー表示
   if (loading) {
@@ -297,21 +293,21 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
                           <span className="w-12">-:</span>
                           <span className="flex-1 text-right text-red-600">{revenueStats.totalExpense}pt</span>
                         </div>
-                        <div className="flex">
-                          <span className="w-12">場代:</span>
-                          <span className={`flex-1 text-right ${revenueStats.totalParlorFee <= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                        <div className="flex pt-1 border-t font-bold">
+                          <span className="w-12">計:</span>
+                          <span className={`flex-1 text-right ${revenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                            {revenueStats.totalBalance >= 0 ? '+' : ''}{revenueStats.totalBalance}pt
+                          </span>
+                        </div>
+                        <div className="flex text-sm text-muted-foreground">
+                          <span className="w-20">うち場代:</span>
+                          <span className="flex-1 text-right">
                             {(() => {
                               const value = Math.abs(revenueStats.totalParlorFee);
                               if (revenueStats.totalParlorFee > 0) return `-${value}pt`;
                               if (revenueStats.totalParlorFee < 0) return `+${value}pt`;
                               return `${value}pt`;
                             })()}
-                          </span>
-                        </div>
-                        <div className="flex pt-1 border-t font-bold">
-                          <span className="w-12">計:</span>
-                          <span className={`flex-1 text-right ${revenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                            {revenueStats.totalBalance >= 0 ? '+' : ''}{revenueStats.totalBalance}pt
                           </span>
                         </div>
                       </div>

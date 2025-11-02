@@ -15,6 +15,7 @@ export interface SessionSummary {
   hanchanCount: number
   totalPayout: number // 最終収支合計
   totalChips: number // チップ合計
+  totalParlorFee: number // 場代合計
   averageRank: number // 平均着順
   rankCounts: {
     first: number
@@ -144,8 +145,8 @@ export async function calculateSessionSummary(
 
       // 最初の有効な半荘からchips/parlorFeeを取得（1回のみ）
       if (!chipsInitialized) {
-        sessionChips = mainUserResult.chips
-        sessionParlorFee = mainUserResult.parlorFee
+        sessionChips = mainUserResult.chips || 0
+        sessionParlorFee = mainUserResult.parlorFee || 0
         chipsInitialized = true
       }
 
@@ -207,8 +208,8 @@ export async function calculateSessionSummary(
 
       // 各プレイヤーのchips/parlorFeeを最初の半荘から取得（1回のみ）
       if (!playerChips.has(playerKey)) {
-        playerChips.set(playerKey, player.chips)
-        playerParlorFees.set(playerKey, player.parlorFee)
+        playerChips.set(playerKey, player.chips || 0)
+        playerParlorFees.set(playerKey, player.parlorFee || 0)
       }
 
       // score + umaのみの収支を計算
@@ -250,19 +251,22 @@ export async function calculateSessionSummary(
     })
   }
 
-  return {
+  const summary = {
     sessionId,
     date: session.date,
     mode: session.mode,
     hanchanCount: totalHanchans, // 入力済み半荘数のみカウント
     totalPayout,
     totalChips,
+    totalParlorFee: sessionParlorFee,
     averageRank,
     rankCounts: session.mode === '3-player'
       ? { first: rankCounts.first, second: rankCounts.second, third: rankCounts.third }
       : rankCounts,
     overallRank
   }
+
+  return summary
 }
 
 // ========================================

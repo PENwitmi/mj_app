@@ -155,7 +155,7 @@ export function SettingsTab({ mainUser, activeUsers, archivedUsers, addNewUser, 
       </Card>
 
       {/* データ再計算ツール */}
-      <MigrationTool />
+      <MigrationTool mainUser={mainUser} />
 
       {/* ユーザー管理Dialog */}
       <Dialog open={userManagementOpen} onOpenChange={setUserManagementOpen}>
