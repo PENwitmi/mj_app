@@ -1,6 +1,6 @@
 # 📊 麻雀アプリ - マスターステータスダッシュボード
 
-**最終更新**: 2025-10-12 17:30
+**最終更新**: 2025-11-05 18:40
 
 ---
 
@@ -11,18 +11,58 @@
 | **開始日** | 2025-10-03 00:17 |
 | **現在のフェーズ** | Phase 6完了 → Phase 7（テスト・最適化）準備中 |
 | **総フェーズ数** | 6（Phase 1-6全完了） + バグ修正・機能追加複数件 |
-| **総ドキュメント数** | 27+ (設計9 + 実装12 + バグ修正3 + 開発知見1 + 新規機能2) |
+| **総ドキュメント数** | 37+ (設計9 + 実装12 + バグ修正3 + 開発知見1 + 新規機能2 + 分析タブ設計10) |
 | **総ファイル数** | 44ファイル（src配下 .ts/.tsx） |
 | **総コード行数** | 7,336行 (TypeScript/TSX) |
 | **ビルドサイズ** | 961KB (minified) / 283KB (gzip) |
-| **完了タスク** | 全Phase完了、主要バグ修正完了 |
-| **現在のGitコミット** | e88ec50 (プレイヤー個別場代機能と分析タブの改善) |
+| **完了タスク** | 全Phase完了、主要バグ修正完了、iOS実機デプロイ完了 |
+| **現在のGitコミット** | b1e49c4 (マイグレーション機能完全修正) |
 
 ---
 
 ## 🚀 現在進行中のプロジェクト
 
-**なし** - 全主要フェーズ完了、Phase 7（テスト・最適化）準備段階
+### 分析タブ包括的修正計画（2025-11-05開始）
+**目的**: エッジケース判定の誤り修正 + selectedUserId対応の完全実装
+
+**Phase 1完了（2025-11-05 16:58）**:
+- 5つのドキュメント作成（要件分析、アーキテクチャ、実装仕様、パフォーマンス戦略、テスト計画）
+- project-docs/2025-11-05-analysis-tab-statistics-redesign/
+
+**新規問題発見（2025-11-05 18:40）**:
+1. **エッジケース判定の誤り（Critical）**
+   - 0点（score === 0）を未入力として扱っている
+   - 麻雀で±0点は正常なプレイ結果
+   - 修正箇所: 4箇所（session-utils.ts×2, InputTab.tsx, AnalysisTab.tsx）
+
+2. **selectedUserId非対応（Critical）**
+   - revenueStats/chipStatsがsession.summary依存（mainUserのみ）
+   - ユーザー切り替えで統計が更新されない
+   - 修正箇所: 2箇所（AnalysisTab.tsx revenueStats/chipStats）
+
+**Phase 2完了（2025-11-05 18:40）**:
+- 完全版設計仕様書作成（5ドキュメント）
+  - 01-BUG_ANALYSIS.md: 問題の詳細分析と影響範囲
+  - 02-DESIGN_SPECIFICATION.md: エッジケース定義と統計計算仕様
+  - 03-IMPLEMENTATION_PLAN.md: 修正箇所の完全なリスト（行番号、修正前後コード）
+  - 04-TEST_STRATEGY.md: 12のテストケース（110分想定）
+  - 05-MIGRATION_GUIDE.md: デプロイ計画とリスク評価
+- project-docs/2025-11-05-analysis-tab-comprehensive-fix/
+
+**実装計画**:
+- **Phase 1: エッジケース修正**（優先度: Critical）
+  - 4箇所の条件分岐修正（`|| score === 0`削除）
+  - 実装時間: 5-10分
+  - リスク: 極めて低い
+
+- **Phase 2: selectedUserId対応**（Phase 1完了後）
+  - revenueStats/chipStatsの完全書き換え
+  - 実装時間: 30-45分
+  - リスク: 中程度
+
+**次のステップ**: 実装開始（03-IMPLEMENTATION_PLAN.mdに従う）
+
+---
 
 ### 次の候補:
 1. **Phase 7: テストコード整備**
@@ -49,6 +89,105 @@
 ---
 
 ## ✅ 直近完了プロジェクト（2週間以内）
+
+### マイグレーション機能完全修正 + iOS実機デプロイ（2025-11-04完了）
+**目的**: 既存データの再計算機能の修正と実機デプロイメント問題解決
+
+**実装内容**:
+- **Phase 1**: マイグレーション機能修正
+  - mainUser ID バグ修正（固定ID → 実際のUUID使用）
+  - NaN表示バグ修正（undefined fallback追加）
+  - 分析タブUI改善（収支表示順変更：計→うち場代）
+  - デバッグログ削除（session-utils.ts, useSessions.ts）
+- **Phase 2**: iOS実機デプロイメント問題解決
+  - 誤った入れ子ディレクトリ構造発見（app/ios/App/）
+  - 古いビルド成果物削除（index-m6QcyouO.js）
+  - クリーンビルド＆実機インストール成功
+
+**技術的課題**:
+- Xcodeが実機ビルド時に誤ったディレクトリから古いファイルをコピー
+- シミュレータは正常動作（正しいディレクトリ使用）
+- SHA256ハッシュ検証で全パイプライン検証
+
+**解決策**:
+- `rm -rf app/ios/` - 誤った入れ子構造削除
+- DerivedData完全削除＆再ビルド
+- `xcrun devicectl install` で実機に直接インストール
+
+**検証結果**:
+- ✅ マイグレーション12/12セッション成功
+- ✅ NaN表示問題完全解決
+- ✅ iOS実機で最新コード反映確認
+- ✅ TypeScriptビルド成功
+
+**変更ファイル**:
+- MigrationTool.tsx, SettingsTab.tsx (+約20行)
+- session-utils.ts (-約40行デバッグログ)
+- AnalysisTab.tsx (+約30行UI改善)
+
+**ドキュメント**:
+- project-docs/2025-10-31-migration-enhancement-analysis-tab/05-IMPLEMENTATION_REPORT.md
+- Serena Memory: 2025-11-04-ios-deployment-nested-directory-issue
+
+コミット: b1e49c4, e181ebf
+
+---
+
+### プレイヤー重複選択問題の修正（2025-10-17完了）
+**目的**: 同一ユーザーが複数のプレイヤー列で選択されないようにする
+
+**実装内容**:
+- **Phase 1**: UI層での重複防止
+  - `excludeUserIds`統合（`excludeMainUser`削除）
+  - `getExcludeUserIds`関数実装（useCallback使用、mainUser含む）
+  - PlayerSelect修正（useMemoでフィルタリング最適化）
+  - Props Drilling（3階層: InputTab → ScoreInputTable → PlayerSelect）
+  - SessionDetailDialog対応（編集モード）
+- **Phase 2**: 保存時バリデーション
+  - `hasDuplicatePlayers`関数実装（O(n)の効率的な重複検出）
+  - `getDuplicatePlayerInfo`関数実装（詳細なエラーメッセージ生成）
+  - handleSave修正（保存前の最終チェック）
+
+**技術的特徴**:
+- 統一された除外メカニズム（excludeUserIdsのみ）
+- 二重の安全装置（UI層 + 保存時バリデーション）
+- パフォーマンス最適化（useMemo/useCallback使用）
+- 動的な選択肢更新（リアクティブ）
+
+**設計判断**:
+- 公開前プロジェクトのため、段階的移行なしで理想形を一気に実装
+- Props Drilling採用（3階層は許容範囲、Context APIは過剰設計）
+- Phase 3（UX改善）は不要と判断（選択肢から完全除外がベストプラクティス）
+
+**テスト結果**: Playwright自動テスト完了（全テスト成功 ✅）
+
+**変更ファイル**: PlayerSelect.tsx, InputTab.tsx, ScoreInputTable.tsx, SessionDetailDialog.tsx (+約120行)
+
+**ドキュメント**: project-docs/2025-10-17-duplicate-player-selection-issue/
+
+---
+
+### ウマルールのリアルタイム同期機能（2025-10-16完了）
+**目的**: 設定タブでウマルールを変更した際、入力タブにリアルタイムで反映
+
+**実装内容**:
+- Custom Events APIによるコンポーネント間通信（Context API不要）
+- `utils.ts`: localStorage破損自動修正、カスタムイベント発行機能、TypeScript型定義
+- `InputTab.tsx`: イベントリスナー実装、トースト通知、functional state update
+- ForceMount戦略と完全互換、データロスリスクなし
+
+**技術的特徴**:
+- Custom Events API（疎結合、型安全、パフォーマンスオーバーヘッドなし）
+- Functional State Update（他の設定フィールド保持）
+- ユーザー通知（トースト表示、明確な説明）
+
+**テスト結果**: 4人打ち3半荘でルール切り替え動作確認、Playwright自動テスト完了
+
+**変更ファイル**: utils.ts, InputTab.tsx (+55行)
+
+コミット: ba4b685
+
+---
 
 ### プレイヤー個別場代機能と分析タブUI改善（2025-10-12完了）
 **目的**: PlayerResultに場代フィールド追加、収支計算ロジック改善、分析タブUI最適化
@@ -139,7 +278,21 @@
 
 ## 📅 月別プロジェクトアーカイブ
 
+### 2025年11月
+
+#### 分析タブ包括的修正計画（2025-11-05）
+- **分析タブ包括的修正計画** (2025-11-05開始、Phase 2完了): 2つの重大問題（エッジケース判定の誤り、selectedUserId非対応）の完全版設計仕様書作成。Phase 1（16:58）: 5つのドキュメント（要件分析、アーキテクチャ、実装仕様、パフォーマンス戦略、テスト計画）。Phase 2（18:40）: 5つの実装ドキュメント（バグ分析、設計仕様、実装計画、テスト戦略、マイグレーションガイド）。修正箇所: 6箇所（4箇所エッジケース + 2箇所selectedUserId対応）。ドキュメント: project-docs/2025-11-05-analysis-tab-statistics-redesign/（Phase 1）, project-docs/2025-11-05-analysis-tab-comprehensive-fix/（Phase 2）
+
+#### マイグレーション＆デプロイメント（2025-11-04）
+- **マイグレーション機能完全修正 + iOS実機デプロイ** (2025-11-04完了): mainUser ID修正、NaN表示修正、分析タブUI改善、iOS誤った入れ子ディレクトリ問題解決。コミット: b1e49c4, e181ebf。ドキュメント: project-docs/2025-10-31-migration-enhancement-analysis-tab/, Serena Memory: 2025-11-04-ios-deployment-nested-directory-issue
+
 ### 2025年10月
+
+#### バグ修正・機能追加（2025-10-17）
+- **プレイヤー重複選択問題の修正** (2025-10-17完了): excludeUserIds統合、Props Drilling実装、保存時バリデーション、Playwrightテスト完了。ドキュメント: project-docs/2025-10-17-duplicate-player-selection-issue/
+
+#### 機能追加（2025-10-16）
+- **ウマルールのリアルタイム同期機能** (2025-10-16完了): Custom Events API、localStorage破損修正、トースト通知、ForceMount互換。コミット: ba4b685
 
 #### Phase 6関連
 - **Capacitor統合・iOS対応** (2025-10-12完了): iOS実機・シミュレータ対応、safe-area調整、レイアウト修正、トースト通知位置変更、初期化画面遷移修正。コミット: dbe6c95, 39b2ea0, c3ee428
@@ -248,6 +401,9 @@
 
 ## 🔄 Serena Memory更新履歴
 
+**2025-10-16 14:37**:
+- ✅ uma-rule-realtime-sync-implementation: ウマルールのリアルタイム同期機能実装記録
+
 **2025-10-12 17:30**:
 - ✅ project_overview: Phase 6完了、プレイヤー別場代機能追加、統計更新
 - ✅ project_structure: db/モジュール分割反映、iOS対応追加、コンポーネント構成更新
@@ -259,6 +415,11 @@
 ---
 
 **更新履歴**:
+- 2025-11-05 18:40: 分析タブ包括的修正計画Phase 2完了（バグ分析、設計仕様、実装計画、テスト戦略、マイグレーションガイドの5ドキュメント）。2つの重大問題の完全版設計仕様書作成完了。project-docs/2025-11-05-analysis-tab-comprehensive-fix/
+- 2025-11-05 16:58: 分析タブ統計機能の設計Phase 1完了（要件分析、アーキテクチャ、実装仕様、パフォーマンス戦略、テスト計画の5ドキュメント）
+- 2025-11-05 16:42: マイグレーション機能完全修正 + iOS実機デプロイメント問題解決完了、Serena Memory追加（2025-11-04-ios-deployment-nested-directory-issue）
+- 2025-10-17 22:28: プレイヤー重複選択問題の修正完了（Phase 1: UI層、Phase 2: 保存時バリデーション）
+- 2025-10-16 14:37: ウマルールのリアルタイム同期機能完了、Serena Memory追加（uma-rule-realtime-sync-implementation）
 - 2025-10-12 17:30: Serena Memory大規模更新（6個のメモリー最新化）、ダッシュボード全体更新
 - 2025-10-12 11:42: プレイヤー別場代フィールド追加プロジェクト記録
 - 2025-10-12 10:44: Phase 6（Capacitor統合・iOS対応）完了記録
