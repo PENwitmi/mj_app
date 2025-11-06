@@ -28,15 +28,19 @@
 
 **目的**: 0点（score === 0）を未入力として扱う誤りを修正
 
-**修正箇所**: 4箇所
+**修正箇所**: 6箇所
 1. session-utils.ts: Line 142
 2. session-utils.ts: Line 203
 3. InputTab.tsx: Line 260
 4. AnalysisTab.tsx: Line 135
+5. **analysis.ts: Line 130** ⚠️ 外部AIレビューで発見
+6. **analysis.ts: Line 142** ⚠️ 外部AIレビューで発見
 
-**実装時間**: 5-10分
+**実装時間**: 8-15分
 
 **リスク**: 極めて低い（条件分岐1つの削除）
+
+**注意**: analysis.ts: Line 225も同様のバグパターンだが、`calculatePointStatistics`は未使用関数のため低優先度（オプション修正）
 
 ### Phase 2: selectedUserId対応
 
@@ -245,9 +249,122 @@
 
 ---
 
+### 修正5: analysis.ts: Line 130
+
+#### ファイル
+`/Users/nishimototakashi/claude_code/mj_app/app/src/lib/db/analysis.ts`
+
+#### 現在のコード（Line 126-131）
+```typescript
+    // 空半荘（全プレイヤーが未入力または見学者）をスキップ
+    const hasValidScores = hanchan.players.some(p =>
+      !p.isSpectator && p.score !== null && p.score !== 0
+    )
+    if (!hasValidScores) continue
+```
+
+#### 修正後のコード
+```typescript
+    // 空半荘（全プレイヤーが未入力または見学者）をスキップ
+    // 注意: score === 0 は正常なプレイ結果として扱う
+    const hasValidScores = hanchan.players.some(p =>
+      !p.isSpectator && p.score !== null
+    )
+    if (!hasValidScores) continue
+```
+
+#### 修正内容
+1. **Line 127**: コメント追加
+   - 追加: "注意: score === 0 は正常なプレイ結果として扱う"
+
+2. **Line 129**: 条件式修正
+   - 削除: `&& p.score !== 0`
+   - 結果: `!p.isSpectator && p.score !== null`
+
+#### 影響範囲
+- `calculateRankStatistics`: AnalysisTab.tsx:90で使用（Production）
+- 全員0点の半荘が「空半荘」として除外されない
+- 着順統計（rankStats）の半荘数カウントが正確になる
+
+---
+
+### 修正6: analysis.ts: Line 142
+
+#### ファイル
+`/Users/nishimototakashi/claude_code/mj_app/app/src/lib/db/analysis.ts`
+
+#### 現在のコード（Line 138-145）
+```typescript
+    for (const hanchan of hanchans) {
+      const targetPlayer = hanchan.players.find(p => p.userId === userId)
+
+      // 対象プレイヤーが存在しない、または見学者、または未入力の場合はスキップ
+      if (!targetPlayer || targetPlayer.isSpectator || targetPlayer.score === null || targetPlayer.score === 0) {
+        continue
+      }
+```
+
+#### 修正後のコード
+```typescript
+    for (const hanchan of hanchans) {
+      const targetPlayer = hanchan.players.find(p => p.userId === userId)
+
+      // 対象プレイヤーが存在しない、または見学者、または未入力の場合はスキップ
+      // 注意: score === 0 は正常なプレイ結果として扱う
+      if (!targetPlayer || targetPlayer.isSpectator || targetPlayer.score === null) {
+        continue
+      }
+```
+
+#### 修正内容
+1. **Line 141-142**: コメント修正
+   - 追加: "注意: score === 0 は正常なプレイ結果として扱う"
+
+2. **Line 143**: 条件式修正
+   - 削除: `|| targetPlayer.score === 0`
+   - 結果: `if (!targetPlayer || targetPlayer.isSpectator || targetPlayer.score === null)`
+
+#### 影響範囲
+- `calculateRankStatistics`: AnalysisTab.tsx:90で使用（Production）
+- selectedUserIdが0点の半荘も着順統計に含まれる
+- 平均着順の計算が正確になる
+
+---
+
+### 修正7（オプション）: analysis.ts: Line 225
+
+#### ファイル
+`/Users/nishimototakashi/claude_code/mj_app/app/src/lib/db/analysis.ts`
+
+#### 状況
+- **関数**: `calculatePointStatistics`
+- **使用状況**: どこからも呼ばれていない（未使用関数）
+- **バグパターン**: 修正1-6と同一（`&& pr.score !== 0`）
+
+#### 現在のコード（Line 225）
+```typescript
+    const activeResults = playerResults.filter(pr =>
+      !pr.isSpectator && pr.score !== null && pr.score !== 0
+    )
+```
+
+#### 修正後のコード
+```typescript
+    const activeResults = playerResults.filter(pr =>
+      !pr.isSpectator && pr.score !== null
+    )
+```
+
+#### 判断
+- **Priority**: Low（将来的なバグ予防）
+- **推奨**: Phase 1で一緒に修正（追加コスト+2分）
+- **影響**: 現時点で影響なし（未使用関数）
+
+---
+
 ## Phase 2: selectedUserId対応
 
-### 修正5: AnalysisTab.tsx: revenueStats (Line 93-122)
+### 修正8: AnalysisTab.tsx: revenueStats (Line 93-122)
 
 #### ファイル
 `/Users/nishimototakashi/claude_code/mj_app/app/src/components/tabs/AnalysisTab.tsx`
@@ -384,7 +501,7 @@
 
 ---
 
-### 修正6: AnalysisTab.tsx: chipStats (Line 158-182)
+### 修正9: AnalysisTab.tsx: chipStats (Line 158-182)
 
 #### ファイル
 `/Users/nishimototakashi/claude_code/mj_app/app/src/components/tabs/AnalysisTab.tsx`
@@ -512,6 +629,20 @@
 - [ ] **Line 135-136**: pointStats条件修正
   - [ ] コメント追加（見学者・未入力除外）
   - [ ] 条件式から`&& userResult.score !== 0`削除
+
+#### analysis.ts ⚠️ 外部AIレビューで発見
+
+- [ ] **Line 126-131**: 空半荘判定修正
+  - [ ] コメント追加（±0点は正常データ）
+  - [ ] 条件式から`&& p.score !== 0`削除
+
+- [ ] **Line 138-145**: 対象プレイヤー判定修正
+  - [ ] コメント追加（±0点は正常データ）
+  - [ ] 条件式から`|| targetPlayer.score === 0`削除
+
+- [ ] **Line 225（オプション）**: pointStatistics判定修正
+  - [ ] 条件式から`&& pr.score !== 0`削除
+  - [ ] 将来的なバグ予防（未使用関数）
 
 ### Phase 2: selectedUserId対応
 
@@ -707,10 +838,11 @@
 
 ### 実装の順序
 
-1. **Phase 1: エッジケース修正**（5-10分）
+1. **Phase 1: エッジケース修正**（8-15分）
    - session-utils.ts: 2箇所
    - InputTab.tsx: 1箇所
    - AnalysisTab.tsx: 1箇所
+   - **analysis.ts: 2-3箇所（外部AIレビューで追加）**
    - 検証: 0点半荘が統計に含まれるか
 
 2. **Phase 2: selectedUserId対応**（30-45分）
@@ -738,6 +870,10 @@
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-05 18:40
+**Document Version**: 1.1
+**Last Updated**: 2025-11-06 (外部AIレビュー反映)
 **Status**: Ready for Implementation
+
+**変更履歴**:
+- v1.1 (2025-11-06): 外部AIレビューによりanalysis.ts の2箇所（Line 130, 142）を追加。修正箇所4→6に変更。
+- v1.0 (2025-11-05): 初版作成

@@ -59,6 +59,18 @@ Level 4: 回帰テスト（既存機能）
 
 0点（score === 0）が正しく処理されることを検証
 
+**修正対象ファイル**:
+- session-utils.ts: Line 142, 203
+- InputTab.tsx: Line 260
+- AnalysisTab.tsx: Line 135
+- **analysis.ts: Line 130, 142（外部AIレビューで追加）**
+
+**検証する関数**:
+- `calculateSessionSummary`（session-utils.ts）
+- `isEmptyHanchan`（InputTab.tsx）
+- `pointStats`計算（AnalysisTab.tsx）
+- **`calculateRankStatistics`（analysis.ts）** ⚠️ 追加
+
 ### テストケース1: 単一セッション・0点半荘
 
 **テストID**: EDGE-001
@@ -104,12 +116,14 @@ Level 4: 回帰テスト（既存機能）
 - [ ] revenueStats.totalExpense: -500pt（場代のみ）
 - [ ] pointStats.pointBalance: 0点
 - [ ] chipStats.chipBalance: 0枚
-- [ ] rankStats.hanchanCount: 1
+- [ ] **rankStats.hanchanCount: 1** ⚠️ analysis.ts修正の検証
 
 **検証項目**:
 - [ ] 0点半荘が「空ハンチャン」として除外されない
 - [ ] 0点半荘が統計に含まれる
 - [ ] 総合順位が正しい（メインユーザー = 4位）
+- [ ] **rankStats（着順統計）が正しく計算される** ⚠️ analysis.ts Line 130の検証
+- [ ] **0点でもrankStatsに含まれる** ⚠️ analysis.ts Line 142の検証
 
 ---
 
@@ -158,17 +172,18 @@ Level 4: 回帰テスト（既存機能）
 **分析タブ（メインユーザー）**:
 - [ ] revenueStats.totalBalance: -500pt
 - [ ] pointStats.pointBalance: 0点
-- [ ] rankStats.hanchanCount: 3（0点半荘を含む）
-- [ ] rankStats.averageRank: (1 + 4 + 4) / 3 = 3.00位
+- [ ] **rankStats.hanchanCount: 3（0点半荘を含む）** ⚠️ analysis.ts Line 130, 142の検証
+- [ ] **rankStats.averageRank: (1 + 4 + 4) / 3 = 3.00位** ⚠️ 0点半荘が平均着順に含まれる
 
 **分析タブ（プレイヤーB）**:
-- [ ] rankStats.hanchanCount: 3（0点半荘×2を含む）
+- [ ] **rankStats.hanchanCount: 3（0点半荘×2を含む）** ⚠️ 重要な検証ポイント
 - [ ] pointStats.pointBalance: 0点 + 5000点 + 0点 = 5000点
 
 **検証項目**:
 - [ ] 複数の0点半荘が統計に含まれる
 - [ ] 平均着順の計算に0点半荘が含まれる
 - [ ] すべてのユーザーで0点半荘が認識される
+- [ ] **`calculateRankStatistics`が0点半荘を正しく処理** ⚠️ analysis.ts修正の核心
 
 ---
 
@@ -204,8 +219,9 @@ Level 4: 回帰テスト（既存機能）
 - [ ] すべてのプレイヤーの収支: -500pt（場代のみ）
 
 **分析タブ**:
-- [ ] 全員の半荘数: 1
+- [ ] **全員の半荘数: 1** ⚠️ analysis.ts Line 130の最重要テスト
 - [ ] 全員のpointBalance: 0点
+- [ ] **rankStatsが正常に表示される** ⚠️ 全員0点でも「空半荘」扱いしない
 
 **検証項目**:
 - [ ] 全員0点の半荘が「空ハンチャン」として除外されない
@@ -699,6 +715,7 @@ test.describe('Phase 2: selectedUserIdテスト', () => {
 1. **Phase 1（エッジケース）**
    - 0点が正しく処理されることを重点的に検証
    - 未入力（null）との違いを明確化
+   - **`calculateRankStatistics`（analysis.ts）の動作確認** ⚠️ 外部AIレビューで追加
 
 2. **Phase 2（selectedUserId）**
    - ユーザー切り替えで統計が更新されることを検証
@@ -723,6 +740,10 @@ test.describe('Phase 2: selectedUserIdテスト', () => {
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-05 18:40
+**Document Version**: 1.1
+**Last Updated**: 2025-11-06 (外部AIレビュー反映)
 **Status**: Ready for Testing
+
+**変更履歴**:
+- v1.1 (2025-11-06): 外部AIレビューによりanalysis.ts（Line 130, 142）の検証項目を追加。rankStats関連のテストケースを強化。
+- v1.0 (2025-11-05): 初版作成

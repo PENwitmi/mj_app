@@ -47,9 +47,10 @@
 ### 修正方針
 
 **Phase 1: エッジケース修正（優先度: Critical）**
-- session-utils.ts、InputTab.tsx、AnalysisTab.tsx の4箇所
+- session-utils.ts、InputTab.tsx、AnalysisTab.tsx、**analysis.ts** の6箇所
 - 0点除外ロジックを削除
 - 影響範囲: 狭い、リスク: 低い
+- **注**: 外部AIレビューによりanalysis.ts の2箇所を追加発見
 
 **Phase 2: selectedUserId対応（優先度: Critical）**
 - AnalysisTab.tsx の2つの統計計算を完全書き換え
@@ -196,6 +197,68 @@ if (userResult && !userResult.isSpectator && userResult.score !== null && userRe
 **影響**:
 - 0点の半荘がpointStatsから除外される
 - plusPoints/minusPoints/pointBalanceが不正確
+
+#### 5. analysis.ts: Line 130 ⚠️ 外部AIレビューで発見
+**場所**: `calculateRankStatistics` - 空半荘判定
+
+**現在のコード**:
+```typescript
+const hasValidScores = hanchan.players.some(p =>
+  !p.isSpectator && p.score !== null && p.score !== 0
+)
+if (!hasValidScores) continue
+```
+
+**影響**:
+- `calculateRankStatistics`はAnalysisTab.tsx:90で使用（Production）
+- 全員±0点の半荘が「空半荘」として除外される
+- 着順統計（rankStats）の半荘数カウントが不正確
+
+**実例シナリオ**:
+```
+半荘構成（全員±0点）:
+- メインユーザー: ±0点
+- プレイヤーB: ±0点
+- プレイヤーC: ±0点
+- プレイヤーD: ±0点
+
+現在の動作:
+  → 「空半荘」として着順統計から除外（誤り）
+
+正しい動作:
+  → 正常な半荘として集計されるべき
+```
+
+#### 6. analysis.ts: Line 142 ⚠️ 外部AIレビューで発見
+**場所**: `calculateRankStatistics` - 対象プレイヤー判定
+
+**現在のコード**:
+```typescript
+const targetPlayer = hanchan.players.find(p => p.userId === userId)
+
+if (!targetPlayer || targetPlayer.isSpectator || targetPlayer.score === null || targetPlayer.score === 0) {
+  continue
+}
+```
+
+**影響**:
+- selectedUserIdが0点の半荘が着順統計から除外される
+- 平均着順の計算が不正確
+
+**実例シナリオ**:
+```
+半荘構成:
+- メインユーザー: ±0点 ← 選択中
+- プレイヤーB: +5000点
+- プレイヤーC: -2500点
+- プレイヤーD: -2500点
+
+現在の動作:
+  → メインユーザーが0点のため、この半荘が集計から除外（誤り）
+
+正しい動作:
+  → メインユーザーの4位として集計されるべき
+```
 
 ### 見学者（isSpectator）について
 
@@ -416,8 +479,12 @@ const chipStats = useMemo(() => {
 | **session-utils.ts** | 203 | 全プレイヤー総収支 | 問題1 | 中（総合順位） | 低 |
 | **InputTab.tsx** | 260 | 空ハンチャン判定 | 問題1 | 狭い（保存前） | 低 |
 | **AnalysisTab.tsx** | 135 | pointStats条件 | 問題1 | 狭い（統計1個） | 低 |
+| **analysis.ts** ⚠️ | 130 | 空半荘判定 | 問題1 | 中（rankStats） | 低 |
+| **analysis.ts** ⚠️ | 142 | 対象プレイヤー判定 | 問題1 | 中（rankStats） | 低 |
 | **AnalysisTab.tsx** | 93-122 | revenueStats | 問題2 | 中（統計全体） | 中 |
 | **AnalysisTab.tsx** | 158-182 | chipStats | 問題2 | 中（統計全体） | 中 |
+
+**注**: ⚠️ マーク付きは外部AIレビューにより発見された追加修正箇所
 
 ### 依存関係
 
@@ -444,6 +511,15 @@ InputTab.tsx (Line 260)
   ↓ 影響
   - 保存されるデータの正確性
 
+analysis.ts (Line 130, 142) ⚠️ 外部AIレビューで発見
+  ↓ 影響
+  - calculateRankStatistics関数
+  ↓ 呼び出し元
+  - AnalysisTab.tsx: Line 90（rankStats計算）
+  ↓ 影響
+  - 分析タブの着順統計表示
+  - 半荘数カウント、平均着順
+
 AnalysisTab.tsx (Line 93-122, 158-182)
   ↓ 影響
   - 分析タブの統計表示
@@ -465,9 +541,11 @@ AnalysisTab.tsx (Line 93-122, 158-182)
 - 修正は単純（条件分岐1つの削除）
 - リスクは極めて低い
 
-**実装コスト**: 極小（4箇所、各1行の修正）
+**実装コスト**: 極小（6箇所、各1行の修正）
 
-**実装時間**: 5-10分
+**実装時間**: 8-15分
+
+**注**: 外部AIレビューによりanalysis.ts の2箇所を追加（Line 130, 142）
 
 ### 問題2: selectedUserId対応
 
@@ -488,6 +566,7 @@ AnalysisTab.tsx (Line 93-122, 158-182)
 1. session-utils.ts: Line 142, 203
 2. InputTab.tsx: Line 260
 3. AnalysisTab.tsx: Line 135
+4. **analysis.ts: Line 130, 142（外部AIレビューで追加）**
 
 **理由**:
 - 独立している（他の問題に依存しない）
@@ -622,6 +701,10 @@ if (mainUserResult.score === null || mainUserResult.score === 0) {
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-05 18:40
+**Document Version**: 1.1
+**Last Updated**: 2025-11-06 (外部AIレビュー反映)
 **Status**: Ready for Design Phase
+
+**変更履歴**:
+- v1.1 (2025-11-06): 外部AIレビューによりanalysis.ts の2箇所（Line 130, 142）を追加。修正箇所4→6に変更。
+- v1.0 (2025-11-05): 初版作成
