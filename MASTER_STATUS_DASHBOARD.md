@@ -1,6 +1,6 @@
 # 📊 麻雀アプリ - マスターステータスダッシュボード
 
-**最終更新**: 2025-11-05 18:40
+**最終更新**: 2025-11-08 15:14
 
 ---
 
@@ -16,7 +16,8 @@
 | **総コード行数** | 7,336行 (TypeScript/TSX) |
 | **ビルドサイズ** | 961KB (minified) / 283KB (gzip) |
 | **完了タスク** | 全Phase完了、主要バグ修正完了、iOS実機デプロイ完了 |
-| **現在のGitコミット** | b1e49c4 (マイグレーション機能完全修正) |
+| **現在のGitコミット** | 8710673 (外部AIレビュー反映 - analysis.ts修正箇所追加) |
+| **現在のブランチ** | fix/analysis-tab-statistics |
 
 ---
 
@@ -33,7 +34,8 @@
 1. **エッジケース判定の誤り（Critical）**
    - 0点（score === 0）を未入力として扱っている
    - 麻雀で±0点は正常なプレイ結果
-   - 修正箇所: 4箇所（session-utils.ts×2, InputTab.tsx, AnalysisTab.tsx）
+   - 修正箇所: **6箇所**（session-utils.ts×2, InputTab.tsx, AnalysisTab.tsx, **analysis.ts×2**）
+   - ⚠️ 外部AIレビューにより analysis.ts の2箇所を追加発見（2025-11-06）
 
 2. **selectedUserId非対応（Critical）**
    - revenueStats/chipStatsがsession.summary依存（mainUserのみ）
@@ -47,20 +49,45 @@
   - 03-IMPLEMENTATION_PLAN.md: 修正箇所の完全なリスト（行番号、修正前後コード）
   - 04-TEST_STRATEGY.md: 12のテストケース（110分想定）
   - 05-MIGRATION_GUIDE.md: デプロイ計画とリスク評価
+
+**外部AIレビュー検証（2025-11-06完了）**:
+- 別のAIによるコードレビュー指摘の妥当性検証
+- **analysis.ts の2箇所（Line 130, 142）で追加バグ発見**
+  - calculateRankStatistics関数（AnalysisTab.tsx:90で使用中）
+  - 0点半荘が着順統計から除外される問題を確認
+- ドキュメント更新（3ファイル v1.0 → v1.1）
+  - 修正箇所: 4 → 6に変更
+  - 実装時間: 5-10分 → 8-15分に更新
+- コミット: 8710673（ドキュメント更新 +259行）
+- Serena Memory作成: 2025-11-06-external-ai-review-analysis-ts-bugs.md
 - project-docs/2025-11-05-analysis-tab-comprehensive-fix/
 
-**実装計画**:
-- **Phase 1: エッジケース修正**（優先度: Critical）
-  - 4箇所の条件分岐修正（`|| score === 0`削除）
-  - 実装時間: 5-10分
+**実装計画（最新版 v1.1 - 2025-11-06更新）**:
+- **Phase 1: エッジケース修正**（優先度: Critical、8-15分）
+  - **6箇所**の条件分岐修正（`|| score === 0`削除）
+    - session-utils.ts: Line 142, 203
+    - InputTab.tsx: Line 260
+    - AnalysisTab.tsx: Line 135
+    - **analysis.ts: Line 130, 142（外部AIレビューで追加）**
+  - 実装時間: 8-15分（当初5-10分から変更）
   - リスク: 極めて低い
 
-- **Phase 2: selectedUserId対応**（Phase 1完了後）
-  - revenueStats/chipStatsの完全書き換え
+- **Phase 2: selectedUserId対応**（Phase 1完了後、30-45分）
+  - revenueStats/chipStatsの完全書き換え（AnalysisTab.tsx 2箇所）
   - 実装時間: 30-45分
   - リスク: 中程度
 
-**次のステップ**: 実装開始（03-IMPLEMENTATION_PLAN.mdに従う）
+**現在の状態（2025-11-06完了）**:
+- ✅ 設計フェーズ完了
+- ✅ 外部AIレビュー検証完了（追加バグ2箇所発見）
+- ✅ ドキュメント更新完了（v1.1、+259行）
+- ✅ Git commit (8710673) - ドキュメント更新
+- 📋 実装準備完了（11ドキュメント、175KB → 180KB、6,200行 → 6,459行）
+- 🔗 Serena Memory作成:
+  - 2025-11-05-analysis-tab-statistics-bug-fix-design.md
+  - 2025-11-06-external-ai-review-analysis-ts-bugs.md
+
+**次のステップ**: Phase 1実装開始（03-IMPLEMENTATION_PLAN.md v1.1に従う）
 
 ---
 
@@ -377,9 +404,10 @@
 6. **着順判定精度**: umaMark依存 → 点数ベース計算に変更
 
 ### 現在の課題
-1. **テストコード不在**: ビジネスロジックのテストが必要
-2. **バンドルサイズ**: 961KB（目標500KB以下）
-3. **型安全性**: 1件のany型使用（TestTab.tsx）
+1. **分析タブ統計バグ**: エッジケース判定の誤り + selectedUserId非対応（設計完了、実装待ち）
+2. **テストコード不在**: ビジネスロジックのテストが必要
+3. **バンドルサイズ**: 961KB（目標500KB以下）
+4. **型安全性**: 1件のany型使用（TestTab.tsx）
 
 ### 検討事項
 - 状態管理ライブラリ選定（Context API vs Zustand）
@@ -401,6 +429,12 @@
 
 ## 🔄 Serena Memory更新履歴
 
+**2025-11-05 21:18**:
+- ✅ 2025-11-05-analysis-tab-statistics-bug-fix-design: 分析タブ統計機能バグ修正の設計フェーズ完了記録（2つの重大バグ、11ドキュメント、実装計画）
+
+**2025-11-05 16:42**:
+- ✅ 2025-11-04-ios-deployment-nested-directory-issue: iOS実機デプロイメント問題解決記録（誤った入れ子ディレクトリ構造）
+
 **2025-10-16 14:37**:
 - ✅ uma-rule-realtime-sync-implementation: ウマルールのリアルタイム同期機能実装記録
 
@@ -415,6 +449,7 @@
 ---
 
 **更新履歴**:
+- 2025-11-05 21:18: 分析タブ統計機能バグ修正の設計フェーズ完全完了。Git commit (e9d04fe) + 新ブランチ作成（fix/analysis-tab-statistics）。Serena Memory作成（2025-11-05-analysis-tab-statistics-bug-fix-design）。実装準備完了。
 - 2025-11-05 18:40: 分析タブ包括的修正計画Phase 2完了（バグ分析、設計仕様、実装計画、テスト戦略、マイグレーションガイドの5ドキュメント）。2つの重大問題の完全版設計仕様書作成完了。project-docs/2025-11-05-analysis-tab-comprehensive-fix/
 - 2025-11-05 16:58: 分析タブ統計機能の設計Phase 1完了（要件分析、アーキテクチャ、実装仕様、パフォーマンス戦略、テスト計画の5ドキュメント）
 - 2025-11-05 16:42: マイグレーション機能完全修正 + iOS実機デプロイメント問題解決完了、Serena Memory追加（2025-11-04-ios-deployment-nested-directory-issue）
