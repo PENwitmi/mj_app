@@ -137,9 +137,9 @@ export async function calculateSessionSummary(
     }
 
     if (mainUserResult) {
-      // 点数が入力されていない半荘はスキップ（未入力の半荘は集計対象外）
-      // 防御的プログラミング: null or 0 の両方をスキップ
-      if (mainUserResult.score === null || mainUserResult.score === 0) {
+      // 未入力の半荘はスキップ（score === null）
+      // 注意: score === 0 は正常なプレイ結果（±0点）として集計対象
+      if (mainUserResult.score === null) {
         continue
       }
 
@@ -199,8 +199,8 @@ export async function calculateSessionSummary(
   // 全プレイヤーの総収支を計算
   for (const hanchan of hanchans) {
     for (const player of hanchan.players) {
-      // 見学者を除外、点数未入力もスキップ
-      if (player.isSpectator || player.score === null || player.score === 0) {
+      // 見学者・未入力を除外（score === 0 は集計対象）
+      if (player.isSpectator || player.score === null) {
         continue
       }
 

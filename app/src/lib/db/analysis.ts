@@ -125,13 +125,14 @@ export function calculateRankStatistics(
 
   // 各半荘ごとに着順を計算
   for (const hanchan of hanchans) {
-    // 防御的プログラミング: 空ハンチャンをスキップ（全員0点の場合）
+    // 空半荘（全プレイヤーが未入力または見学者）をスキップ
+    // 注意: score === 0 は正常なプレイ結果として扱う
     const hasValidScores = hanchan.players.some(p =>
-      !p.isSpectator && p.score !== null && p.score !== 0
+      !p.isSpectator && p.score !== null
     )
 
     if (!hasValidScores) {
-      continue // 全員0点 or null の場合はスキップ
+      continue // 全員未入力 or 見学者の場合はスキップ
     }
 
     // 半荘内の全プレイヤーの着順を計算（点数順）
@@ -139,8 +140,10 @@ export function calculateRankStatistics(
 
     // 対象ユーザーのPlayerResultを見つける
     const targetPlayer = hanchan.players.find(p => p.userId === targetUserId)
-    if (!targetPlayer || targetPlayer.isSpectator || targetPlayer.score === null || targetPlayer.score === 0) {
-      continue // 見学者 or 点数未入力 or 0点 はスキップ
+    // 対象プレイヤーが存在しない、または見学者、または未入力の場合はスキップ
+    // 注意: score === 0 は正常なプレイ結果として扱う
+    if (!targetPlayer || targetPlayer.isSpectator || targetPlayer.score === null) {
+      continue // 見学者 or 点数未入力はスキップ
     }
 
     // 対象ユーザーの着順を取得

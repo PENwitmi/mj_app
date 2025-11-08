@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -116,6 +116,36 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
     setHanchans(initialHanchans)
   }
 
+  /**
+   * 各プレイヤー列に対する除外ユーザーIDを計算
+   * メインユーザーと他列で選択中のユーザーを統一的に除外
+   *
+   * @param currentPlayerIndex - 現在の列インデックス
+   * @returns 除外すべきユーザーIDの配列
+   */
+  const getExcludeUserIds = useCallback(
+    (currentPlayerIndex: number): string[] => {
+      const excludeIds: string[] = []
+
+      // メインユーザーを除外（列1以外）
+      if (currentPlayerIndex !== 0 && mainUser) {
+        excludeIds.push(mainUser.id)
+      }
+
+      // 他列選択中のユーザーを除外
+      if (hanchans.length > 0) {
+        hanchans[0].players.forEach((player, idx) => {
+          if (idx !== currentPlayerIndex && player.userId) {
+            excludeIds.push(player.userId)
+          }
+        })
+      }
+
+      return excludeIds
+    },
+    [hanchans, mainUser]
+  )
+
   // プレイヤー選択更新ハンドラー
   const handlePlayerChange = (playerIndex: number, userId: string | null, playerName: string) => {
     setHanchans((prevHanchans) =>
@@ -152,32 +182,102 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
     )
   }
 
+  /**
+   * プレイヤーの重複チェック
+   *
+   * @param hanchans - 全半荘データ
+   * @returns 重複があればtrue
+   */
+  const hasDuplicatePlayers = (hanchans: Hanchan[]): boolean => {
+    if (hanchans.length === 0) return false
+
+    // 最初の半荘のプレイヤー構成をチェック（全半荘で同一構成）
+    const firstHanchan = hanchans[0]
+
+    // 登録済みユーザー（userId !== null）のIDを収集
+    const userIds = firstHanchan.players
+      .map(player => player.userId)
+      .filter(userId => userId !== null)
+
+    // 重複チェック: ユニーク数と元の配列長を比較
+    const uniqueUserIds = new Set(userIds)
+    return userIds.length !== uniqueUserIds.size
+  }
+
+  /**
+   * 重複しているプレイヤー情報を取得（エラーメッセージ用）
+   *
+   * @param hanchans - 全半荘データ
+   * @returns 重複ユーザーの情報配列
+   */
+  const getDuplicatePlayerInfo = (hanchans: Hanchan[]): { userId: string; playerName: string; positions: number[] }[] => {
+    if (hanchans.length === 0) return []
+
+    const firstHanchan = hanchans[0]
+    const userIdMap = new Map<string, { playerName: string; positions: number[] }>()
+
+    firstHanchan.players.forEach((player, idx) => {
+      if (player.userId) {
+        const existing = userIdMap.get(player.userId)
+        if (existing) {
+          existing.positions.push(idx + 1)
+        } else {
+          userIdMap.set(player.userId, {
+            playerName: player.playerName,
+            positions: [idx + 1],
+          })
+        }
+      }
+    })
+
+    // 2箇所以上で使用されているユーザーのみ返す
+    return Array.from(userIdMap.entries())
+      .filter(([_, info]) => info.positions.length > 1)
+      .map(([userId, info]) => ({
+        userId,
+        playerName: info.playerName,
+        positions: info.positions,
+      }))
+  }
+
   // セッション保存処理
   const handleSave = async () => {
     try {
+      // 1. 重複チェック（Phase 2: 安全装置）
+      if (hasDuplicatePlayers(hanchans)) {
+        const duplicates = getDuplicatePlayerInfo(hanchans)
+        const errorMessage = duplicates
+          .map(d => `「${d.playerName}」が${d.positions.join('列と')}列で選択されています`)
+          .join('\n')
+
+        toast.error(`同じプレイヤーが複数回選択されています:\n${errorMessage}`)
+        return
+      }
+
       // 空ハンチャン判定関数（ローカルヘルパー）
+      // 注意: score === 0 は正常データとして扱う（全員±0点は有効な半荘）
       const isEmptyHanchan = (h: Hanchan): boolean => {
         return h.players.every(p =>
-          p.isSpectator || p.score === null || p.score === 0
+          p.isSpectator || p.score === null
         )
       }
 
-      // 1. 空ハンチャンをフィルタリング（有効なハンチャンのみ抽出）
+      // 2. 空ハンチャンをフィルタリング（有効なハンチャンのみ抽出）
       const validHanchans = hanchans.filter(h => !isEmptyHanchan(h))
 
-      // 2. バリデーション：最低1半荘の有効データが必要
+      // 3. バリデーション：最低1半荘の有効データが必要
       if (validHanchans.length === 0) {
         toast.error('点数が入力されていません')
         return
       }
 
-      // 3. 半荘番号を振り直し（1から連番）
+      // 4. 半荘番号を振り直し（1から連番）
       const renumberedHanchans = validHanchans.map((h, index) => ({
         ...h,
         hanchanNumber: index + 1
       }))
 
-      // 4. セッションデータを作成
+      // 5. セッションデータを作成
       const saveData: SessionSaveData = {
         date: settings.date,
         mode: selectedMode === '4-player' ? 'four-player' : 'three-player',
@@ -273,6 +373,7 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
         onHanchansChange={setHanchans}
         onPlayerChange={handlePlayerChange}
         onAddNewUser={addNewUser}
+        getExcludeUserIds={getExcludeUserIds}
       />
 
       {/* 集計エリア */}

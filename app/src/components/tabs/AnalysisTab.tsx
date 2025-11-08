@@ -132,7 +132,8 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
       if (hanchans) {
         hanchans.forEach(hanchan => {
           const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
-          if (userResult && !userResult.isSpectator && userResult.score !== null && userResult.score !== 0) {
+          // 見学者・未入力を除外（score === 0 は集計対象）
+          if (userResult && !userResult.isSpectator && userResult.score !== null) {
             // 小計 = score + umaPoints * umaValue
             const umaPoints = umaMarkToValue(userResult.umaMark)
             const subtotal = userResult.score + umaPoints * session.umaValue
