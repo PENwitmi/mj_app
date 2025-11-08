@@ -95,20 +95,56 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
 
     let totalIncome = 0
     let totalExpense = 0
-    let totalParlorFee = 0
+    let accumulatedParlorFee = 0  // 全セッションの場代合計
 
-    // ✅ セッション単位で収支を集計（session.summary使用）
-    filteredSessions.forEach(({ session }) => {
-      if (session.summary) {
-        // ✅ session.summaryから全て取得（一貫性）
-        const totalPayout = session.summary.totalPayout
-        totalParlorFee += session.summary.totalParlorFee
+    // セッション単位で収支を集計（selectedUserIdベース）
+    filteredSessions.forEach(({ session, hanchans }) => {
+      let sessionChips = 0
+      let sessionParlorFee = 0
+      let chipsInitialized = false
 
-        // ✅ セッション単位で収入/支出を振り分け（設計的に正しい）
-        if (totalPayout >= 0) {
-          totalIncome += totalPayout
-        } else {
-          totalExpense += totalPayout
+      if (hanchans) {
+        // Phase 1: 各半荘のスコア収支を計算
+        hanchans.forEach(hanchan => {
+          const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
+
+          // 見学者・未入力を除外（score === 0 は集計対象）
+          if (!userResult || userResult.isSpectator || userResult.score === null) {
+            return
+          }
+
+          // chips/parlorFeeはセッションで1回のみ取得
+          if (!chipsInitialized) {
+            sessionChips = userResult.chips || 0
+            sessionParlorFee = userResult.parlorFee || 0
+            chipsInitialized = true
+            accumulatedParlorFee += sessionParlorFee  // 場代を累積
+          }
+
+          // 小計（score + umaPoints * umaValue）
+          const umaPoints = umaMarkToValue(userResult.umaMark)
+          const subtotal = userResult.score + umaPoints * session.umaValue
+
+          // レート適用
+          const scorePayout = subtotal * session.rate
+
+          // プラス/マイナス振り分け
+          if (scorePayout >= 0) {
+            totalIncome += scorePayout
+          } else {
+            totalExpense += scorePayout
+          }
+        })
+
+        // Phase 2: セッション終了時にchips/parlorFeeを加算
+        if (chipsInitialized) {
+          const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
+
+          if (chipsPayout >= 0) {
+            totalIncome += chipsPayout
+          } else {
+            totalExpense += chipsPayout
+          }
         }
       }
     })
@@ -116,10 +152,10 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
     return {
       totalIncome,
       totalExpense,
-      totalParlorFee,  // ✅ UI表示用に保持（4行構造維持）
-      totalBalance: totalIncome + totalExpense  // totalPayoutには既にparlorFee含まれるため再度引かない
+      totalParlorFee: accumulatedParlorFee,  // UI表示用
+      totalBalance: totalIncome + totalExpense
     }
-  }, [filteredSessions])
+  }, [filteredSessions, selectedUserId])  // ✅ selectedUserIdを依存配列に追加
 
   const pointStats = useMemo(() => {
     if (filteredSessions.length === 0) return null
@@ -162,15 +198,31 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
     let plusChips = 0
     let minusChips = 0
 
-    // ✅ セッション単位でチップを集計（session.summary使用）
-    filteredSessions.forEach(({ session }) => {
-      if (session.summary) {
-        const chips = session.summary.totalChips
+    // セッション単位でチップを集計（selectedUserIdベース）
+    filteredSessions.forEach(({ hanchans }) => {
+      if (hanchans && hanchans.length > 0) {
+        let sessionChips = 0
+        let chipsFound = false
 
-        if (chips >= 0) {
-          plusChips += chips
-        } else {
-          minusChips += chips
+        // 最初の有効半荘からチップを取得（1回のみ）
+        for (const hanchan of hanchans) {
+          const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
+
+          // 見学者・未入力を除外（score === 0 は集計対象）
+          if (userResult && !userResult.isSpectator && userResult.score !== null) {
+            sessionChips = userResult.chips || 0
+            chipsFound = true
+            break  // 1回のみ
+          }
+        }
+
+        // セッション単位で振り分け
+        if (chipsFound) {
+          if (sessionChips >= 0) {
+            plusChips += sessionChips
+          } else {
+            minusChips += sessionChips
+          }
         }
       }
     })
@@ -180,7 +232,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
       minusChips,
       chipBalance: plusChips + minusChips
     }
-  }, [filteredSessions])
+  }, [filteredSessions, selectedUserId])  // ✅ selectedUserIdを依存配列に追加
 
   // ローディング・エラー表示
   if (loading) {
