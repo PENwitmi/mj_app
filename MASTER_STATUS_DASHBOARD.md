@@ -1,6 +1,6 @@
 # 📊 麻雀アプリ - マスターステータスダッシュボード
 
-**最終更新**: 2025-11-08 15:14
+**最終更新**: 2025-11-08 21:23
 
 ---
 
@@ -16,80 +16,12 @@
 | **総コード行数** | 7,336行 (TypeScript/TSX) |
 | **ビルドサイズ** | 961KB (minified) / 283KB (gzip) |
 | **完了タスク** | 全Phase完了、主要バグ修正完了、iOS実機デプロイ完了 |
-| **現在のGitコミット** | 8710673 (外部AIレビュー反映 - analysis.ts修正箇所追加) |
-| **現在のブランチ** | fix/analysis-tab-statistics |
+| **現在のGitコミット** | b24be71 (Phase 1テスト自動化完了) |
+| **現在のブランチ** | fix/analysis-tab-statistics（マージ待ち） |
 
 ---
 
 ## 🚀 現在進行中のプロジェクト
-
-### 分析タブ包括的修正計画（2025-11-05開始）
-**目的**: エッジケース判定の誤り修正 + selectedUserId対応の完全実装
-
-**Phase 1完了（2025-11-05 16:58）**:
-- 5つのドキュメント作成（要件分析、アーキテクチャ、実装仕様、パフォーマンス戦略、テスト計画）
-- project-docs/2025-11-05-analysis-tab-statistics-redesign/
-
-**新規問題発見（2025-11-05 18:40）**:
-1. **エッジケース判定の誤り（Critical）**
-   - 0点（score === 0）を未入力として扱っている
-   - 麻雀で±0点は正常なプレイ結果
-   - 修正箇所: **6箇所**（session-utils.ts×2, InputTab.tsx, AnalysisTab.tsx, **analysis.ts×2**）
-   - ⚠️ 外部AIレビューにより analysis.ts の2箇所を追加発見（2025-11-06）
-
-2. **selectedUserId非対応（Critical）**
-   - revenueStats/chipStatsがsession.summary依存（mainUserのみ）
-   - ユーザー切り替えで統計が更新されない
-   - 修正箇所: 2箇所（AnalysisTab.tsx revenueStats/chipStats）
-
-**Phase 2完了（2025-11-05 18:40）**:
-- 完全版設計仕様書作成（5ドキュメント）
-  - 01-BUG_ANALYSIS.md: 問題の詳細分析と影響範囲
-  - 02-DESIGN_SPECIFICATION.md: エッジケース定義と統計計算仕様
-  - 03-IMPLEMENTATION_PLAN.md: 修正箇所の完全なリスト（行番号、修正前後コード）
-  - 04-TEST_STRATEGY.md: 12のテストケース（110分想定）
-  - 05-MIGRATION_GUIDE.md: デプロイ計画とリスク評価
-
-**外部AIレビュー検証（2025-11-06完了）**:
-- 別のAIによるコードレビュー指摘の妥当性検証
-- **analysis.ts の2箇所（Line 130, 142）で追加バグ発見**
-  - calculateRankStatistics関数（AnalysisTab.tsx:90で使用中）
-  - 0点半荘が着順統計から除外される問題を確認
-- ドキュメント更新（3ファイル v1.0 → v1.1）
-  - 修正箇所: 4 → 6に変更
-  - 実装時間: 5-10分 → 8-15分に更新
-- コミット: 8710673（ドキュメント更新 +259行）
-- Serena Memory作成: 2025-11-06-external-ai-review-analysis-ts-bugs.md
-- project-docs/2025-11-05-analysis-tab-comprehensive-fix/
-
-**実装計画（最新版 v1.1 - 2025-11-06更新）**:
-- **Phase 1: エッジケース修正**（優先度: Critical、8-15分）
-  - **6箇所**の条件分岐修正（`|| score === 0`削除）
-    - session-utils.ts: Line 142, 203
-    - InputTab.tsx: Line 260
-    - AnalysisTab.tsx: Line 135
-    - **analysis.ts: Line 130, 142（外部AIレビューで追加）**
-  - 実装時間: 8-15分（当初5-10分から変更）
-  - リスク: 極めて低い
-
-- **Phase 2: selectedUserId対応**（Phase 1完了後、30-45分）
-  - revenueStats/chipStatsの完全書き換え（AnalysisTab.tsx 2箇所）
-  - 実装時間: 30-45分
-  - リスク: 中程度
-
-**現在の状態（2025-11-06完了）**:
-- ✅ 設計フェーズ完了
-- ✅ 外部AIレビュー検証完了（追加バグ2箇所発見）
-- ✅ ドキュメント更新完了（v1.1、+259行）
-- ✅ Git commit (8710673) - ドキュメント更新
-- 📋 実装準備完了（11ドキュメント、175KB → 180KB、6,200行 → 6,459行）
-- 🔗 Serena Memory作成:
-  - 2025-11-05-analysis-tab-statistics-bug-fix-design.md
-  - 2025-11-06-external-ai-review-analysis-ts-bugs.md
-
-**次のステップ**: Phase 1実装開始（03-IMPLEMENTATION_PLAN.md v1.1に従う）
-
----
 
 ### 次の候補:
 1. **Phase 7: テストコード整備**
@@ -116,6 +48,62 @@
 ---
 
 ## ✅ 直近完了プロジェクト（2週間以内）
+
+### 分析タブ包括的修正計画（2025-11-08完了）
+**目的**: エッジケース判定の誤り修正 + selectedUserId対応の完全実装 + Playwrightテスト自動化
+
+**実装内容**:
+- **Phase 1実装（2025-11-08）**: エッジケース修正（6箇所）
+  - `score === 0`を未入力として誤って扱っていた問題を修正
+  - session-utils.ts: Line 142, 203
+  - InputTab.tsx: Line 260
+  - AnalysisTab.tsx: Line 135
+  - analysis.ts: Line 130, 142
+- **Phase 2実装（2025-11-08）**: selectedUserId対応
+  - revenueStats/chipStatsを完全書き換え
+  - chips/parlorFee 1回カウント（初期化フラグ使用）
+  - 動的統計計算（session.summary非依存）
+- **Playwrightテスト自動化（2025-11-08）**:
+  - 4つのテストケース実装（507行）
+  - TC-001: ユーザー切り替えで全統計更新
+  - TC-002: chips/parlorFee 1回カウント検証
+  - TC-101: 動的計算とsession.summary整合性
+  - TC-401: 既存機能への影響なし
+  - 全テスト成功（12.6秒）
+
+**技術的特徴**:
+- エッジケース完全対応（score === 0は正常な±0点）
+- 二段階計算パターン（スコア支払→チップ/場代）
+- テストの実コード検証（SettingsTab.tsx, NewPlayerDialog.tsx読み取り）
+- セマンティックセレクター使用（getByRole, getByPlaceholder）
+
+**設計判断**:
+- 設計フェーズ完了（2025-11-05〜11-06、11ドキュメント）
+- 外部AIレビュー検証（analysis.ts 2箇所追加発見）
+- テストファースト実装（実装→テストではなく、設計→テスト→検証）
+
+**検証結果**:
+- ✅ TypeScriptビルド成功
+- ✅ Playwrightテスト全4件成功
+- ✅ chips/parlorFee 6倍バグ修正確認
+- ✅ selectedUserId動的計算確認
+
+**変更ファイル**:
+- session-utils.ts, InputTab.tsx, AnalysisTab.tsx, analysis.ts（Phase 1: 6箇所）
+- AnalysisTab.tsx（Phase 2: revenueStats/chipStats完全書き換え）
+- 03-analysis-tab-statistics.spec.ts（新規、507行）
+
+**ドキュメント**:
+- project-docs/2025-11-05-analysis-tab-statistics-redesign/（Phase 1設計）
+- project-docs/2025-11-05-analysis-tab-comprehensive-fix/（Phase 2設計、11ドキュメント）
+- Serena Memory:
+  - 2025-11-05-analysis-tab-statistics-bug-fix-design.md
+  - 2025-11-06-external-ai-review-analysis-ts-bugs.md
+  - 2025-11-08-analysis-tab-statistics-fix-session.md
+
+コミット: 446f914（Phase 1）, 5bd06ee（Phase 2）, b24be71（テスト）
+
+---
 
 ### マイグレーション機能完全修正 + iOS実機デプロイ（2025-11-04完了）
 **目的**: 既存データの再計算機能の修正と実機デプロイメント問題解決
@@ -307,8 +295,8 @@
 
 ### 2025年11月
 
-#### 分析タブ包括的修正計画（2025-11-05）
-- **分析タブ包括的修正計画** (2025-11-05開始、Phase 2完了): 2つの重大問題（エッジケース判定の誤り、selectedUserId非対応）の完全版設計仕様書作成。Phase 1（16:58）: 5つのドキュメント（要件分析、アーキテクチャ、実装仕様、パフォーマンス戦略、テスト計画）。Phase 2（18:40）: 5つの実装ドキュメント（バグ分析、設計仕様、実装計画、テスト戦略、マイグレーションガイド）。修正箇所: 6箇所（4箇所エッジケース + 2箇所selectedUserId対応）。ドキュメント: project-docs/2025-11-05-analysis-tab-statistics-redesign/（Phase 1）, project-docs/2025-11-05-analysis-tab-comprehensive-fix/（Phase 2）
+#### 分析タブ包括的修正計画（2025-11-08完了）
+- **分析タブ包括的修正計画** (2025-11-05開始、2025-11-08完了): エッジケース判定の誤り（6箇所）、selectedUserId対応（2箇所）、Playwrightテスト自動化（4テストケース）。設計フェーズ（2025-11-05〜11-06、11ドキュメント）→実装フェーズ（2025-11-08）→テスト完全成功。コミット: 446f914（Phase 1）, 5bd06ee（Phase 2）, b24be71（テスト）。ドキュメント: project-docs/2025-11-05-analysis-tab-statistics-redesign/, project-docs/2025-11-05-analysis-tab-comprehensive-fix/, Serena Memory: 2025-11-05-analysis-tab-statistics-bug-fix-design.md, 2025-11-06-external-ai-review-analysis-ts-bugs.md, 2025-11-08-analysis-tab-statistics-fix-session.md
 
 #### マイグレーション＆デプロイメント（2025-11-04）
 - **マイグレーション機能完全修正 + iOS実機デプロイ** (2025-11-04完了): mainUser ID修正、NaN表示修正、分析タブUI改善、iOS誤った入れ子ディレクトリ問題解決。コミット: b1e49c4, e181ebf。ドキュメント: project-docs/2025-10-31-migration-enhancement-analysis-tab/, Serena Memory: 2025-11-04-ios-deployment-nested-directory-issue
@@ -449,6 +437,7 @@
 ---
 
 **更新履歴**:
+- 2025-11-08 21:23: 分析タブ包括的修正計画完全完了。Phase 1（エッジケース6箇所）+ Phase 2（selectedUserId対応2箇所）+ Playwrightテスト自動化（4テストケース全成功）。コミット: 446f914, 5bd06ee, b24be71。ダッシュボード更新（現在進行中→直近完了へ移動）。
 - 2025-11-05 21:18: 分析タブ統計機能バグ修正の設計フェーズ完全完了。Git commit (e9d04fe) + 新ブランチ作成（fix/analysis-tab-statistics）。Serena Memory作成（2025-11-05-analysis-tab-statistics-bug-fix-design）。実装準備完了。
 - 2025-11-05 18:40: 分析タブ包括的修正計画Phase 2完了（バグ分析、設計仕様、実装計画、テスト戦略、マイグレーションガイドの5ドキュメント）。2つの重大問題の完全版設計仕様書作成完了。project-docs/2025-11-05-analysis-tab-comprehensive-fix/
 - 2025-11-05 16:58: 分析タブ統計機能の設計Phase 1完了（要件分析、アーキテクチャ、実装仕様、パフォーマンス戦略、テスト計画の5ドキュメント）
