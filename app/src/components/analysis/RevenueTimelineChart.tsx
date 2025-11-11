@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import type { SessionWithSummary } from '@/hooks/useSessions'
 import type { ChartConfig } from "@/components/ui/chart"
-import { calculatePayout } from '@/lib/session-utils'
+import { umaMarkToValue } from '@/lib/uma-utils'
 
 type DisplayMode = 'session' | 'cumulative'
 
@@ -43,23 +43,37 @@ function prepareTimelineData(
   return sorted.map(({ session, hanchans }) => {
     // hanchansから対象ユーザーの収支を計算
     let sessionRevenue = 0
+    let sessionChips = 0
+    let sessionParlorFee = 0
+    let chipsInitialized = false
 
+    // Phase 1: スコア収支計算（chips/parlorFee除く）
     hanchans?.forEach(hanchan => {
       const userResult = hanchan.players.find(p => p.userId === userId)
-      if (userResult) {
-        // calculatePayoutで正確な収支計算（円）
-        const payout = calculatePayout(
-          userResult.score,
-          userResult.umaMark,
-          userResult.chips,
-          session.rate,
-          session.umaValue,
-          session.chipRate,
-          session.parlorFee
-        )
-        sessionRevenue += payout
+
+      if (!userResult || userResult.isSpectator || userResult.score === null) {
+        return
       }
+
+      // chips/parlorFeeを1回だけ取得（初期化フラグ使用）
+      if (!chipsInitialized) {
+        sessionChips = userResult.chips || 0
+        sessionParlorFee = userResult.parlorFee || 0
+        chipsInitialized = true
+      }
+
+      // スコア収支計算（chips/parlorFee除く）
+      const umaPoints = umaMarkToValue(userResult.umaMark)
+      const subtotal = userResult.score + umaPoints * session.umaValue
+      const scorePayout = subtotal * session.rate
+      sessionRevenue += scorePayout
     })
+
+    // Phase 2: chips/parlorFeeを1回だけ加算
+    if (chipsInitialized) {
+      const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
+      sessionRevenue += chipsPayout
+    }
 
     // 累積収支更新
     cumulative += sessionRevenue

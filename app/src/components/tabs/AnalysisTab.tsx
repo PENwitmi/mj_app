@@ -99,6 +99,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
 
     // セッション単位で収支を集計（selectedUserIdベース）
     filteredSessions.forEach(({ session, hanchans }) => {
+      let sessionRevenue = 0  // セッション収支
       let sessionChips = 0
       let sessionParlorFee = 0
       let chipsInitialized = false
@@ -125,26 +126,22 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
           const umaPoints = umaMarkToValue(userResult.umaMark)
           const subtotal = userResult.score + umaPoints * session.umaValue
 
-          // レート適用
+          // レート適用してセッション収支に加算
           const scorePayout = subtotal * session.rate
-
-          // プラス/マイナス振り分け
-          if (scorePayout >= 0) {
-            totalIncome += scorePayout
-          } else {
-            totalExpense += scorePayout
-          }
+          sessionRevenue += scorePayout
         })
 
         // Phase 2: セッション終了時にchips/parlorFeeを加算
         if (chipsInitialized) {
           const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
+          sessionRevenue += chipsPayout
+        }
 
-          if (chipsPayout >= 0) {
-            totalIncome += chipsPayout
-          } else {
-            totalExpense += chipsPayout
-          }
+        // セッション単位でプラス/マイナス振り分け
+        if (sessionRevenue >= 0) {
+          totalIncome += sessionRevenue
+        } else {
+          totalExpense += sessionRevenue
         }
       }
     })
