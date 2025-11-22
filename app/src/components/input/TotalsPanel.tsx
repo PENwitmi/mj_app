@@ -9,7 +9,7 @@ export interface Hanchan {
   autoCalculated: boolean
 }
 
-interface PlayerTotals {
+export interface PlayerTotals {
   scoreTotal: number
   umaTotal: number
   subtotal: number
@@ -19,7 +19,7 @@ interface PlayerTotals {
   finalPayout: number
 }
 
-function calculatePlayerTotals(
+export function calculatePlayerTotals(
   playerIndex: number,
   hanchans: Hanchan[],
   settings: SessionSettings

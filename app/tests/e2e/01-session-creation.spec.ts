@@ -153,19 +153,22 @@ test.describe('Session Creation Flow', () => {
     // 日付が表示されている
     await expect(dialog).toContainText(today);
 
-    // モードが表示されている
-    await expect(dialog.getByText('モード: 4人打ち')).toBeVisible();
+    // モードと半荘数が表示されている（DialogDescription）
+    await expect(dialog).toContainText('4人打ち • 1半荘');
+
+    // 半荘テーブルを特定（thead内に「#」を持つテーブル）
+    const hanchanTable = dialog.locator('table').filter({ has: page.locator('thead th', { hasText: '#' }) });
 
     // プレイヤー名と点数が表示されている
-    await expect(dialog.locator('text=自分')).toBeVisible();
-    await expect(dialog).toContainText('40');
-    await expect(dialog).toContainText('10');
-    await expect(dialog).toContainText('-20');
-    await expect(dialog).toContainText('-30');
+    await expect(hanchanTable.locator('text=自分')).toBeVisible();
+    await expect(hanchanTable).toContainText('40');
+    await expect(hanchanTable).toContainText('10');
+    await expect(hanchanTable).toContainText('-20');
+    await expect(hanchanTable).toContainText('-30');
 
     // ウママークが表示されている
-    await expect(dialog.locator('text=○○').first()).toBeVisible();
-    await expect(dialog.locator('text=✗✗').first()).toBeVisible();
+    await expect(hanchanTable.locator('text=○○').first()).toBeVisible();
+    await expect(hanchanTable.locator('text=✗✗').first()).toBeVisible();
   });
 
   test('TC-E2E-002: 3人打ちセッションの作成', async ({ page }) => {
@@ -334,15 +337,18 @@ test.describe('Session Creation Flow', () => {
     // ダイアログで2半荘分のデータが表示される
     const dialog = page.locator('[role="dialog"]');
 
+    // 半荘テーブルを特定（thead内に「#」を持つテーブル）
+    const hanchanTable = dialog.locator('table').filter({ has: page.locator('thead th', { hasText: '#' }) });
+
     // 半荘1の点数を確認
-    const row1 = dialog.locator('table tbody tr:nth-child(1)');
+    const row1 = hanchanTable.locator('tbody tr:nth-child(1)');
     await expect(row1).toContainText('30');
     await expect(row1).toContainText('10');
     await expect(row1).toContainText('-10');
     await expect(row1).toContainText('-30');
 
     // 半荘2の点数を確認
-    const row2 = dialog.locator('table tbody tr:nth-child(2)');
+    const row2 = hanchanTable.locator('tbody tr:nth-child(2)');
     await expect(row2).toContainText('20');
     await expect(row2).toContainText('15');
     await expect(row2).toContainText('-15');
