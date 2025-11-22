@@ -25,6 +25,7 @@ interface PlayerSelectProps {
   users: User[]
   onAddUser: (name: string) => Promise<User>
   excludeMainUser?: boolean  // メインユーザーを選択肢から除外
+  excludeUserIds?: string[]  // 除外するユーザーIDのリスト
 }
 
 /**
@@ -40,6 +41,7 @@ export function PlayerSelect({
   users,
   onAddUser,
   excludeMainUser = false,
+  excludeUserIds = [],
 }: PlayerSelectProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -95,11 +97,13 @@ export function PlayerSelect({
           )}
 
           {/* 登録済みユーザー */}
-          {users.map(user => (
-            <SelectItem key={user.id} value={user.id}>
-              {user.name}
-            </SelectItem>
-          ))}
+          {users
+            .filter(user => !excludeUserIds.includes(user.id))
+            .map(user => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.name}
+              </SelectItem>
+            ))}
 
           {/* デフォルト名 */}
           {users.length > 0 && <SelectSeparator />}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import {
 import type { Session, Hanchan, PlayerResult, User } from '@/lib/db-utils'
 import type { SessionSettings } from '@/components/input/SessionSettings'
 import { ScoreInputTable } from '@/components/input/ScoreInputTable'
-import { TotalsPanel } from '@/components/input/TotalsPanel'
+import { TotalsPanel, calculatePlayerTotals } from '@/components/input/TotalsPanel'
 import { logger } from '@/lib/logger'
 
 // getSessionWithDetailsの戻り値の型
@@ -143,6 +143,30 @@ export function SessionDetailDialog({
     setHasUnsavedChanges(false)
   }
 
+  // 各プレイヤー列に対する除外ユーザーIDを計算
+  const getExcludeUserIds = useCallback(
+    (currentPlayerIndex: number): string[] => {
+      const excludeIds: string[] = []
+
+      // メインユーザーを除外（列1以外）
+      if (currentPlayerIndex !== 0 && mainUser) {
+        excludeIds.push(mainUser.id)
+      }
+
+      // 他列選択中のユーザーを除外
+      if (editableHanchans.length > 0) {
+        editableHanchans[0].players.forEach((player, idx) => {
+          if (idx !== currentPlayerIndex && player.userId) {
+            excludeIds.push(player.userId)
+          }
+        })
+      }
+
+      return excludeIds
+    },
+    [editableHanchans, mainUser]
+  )
+
   // 変更検知
   const handleSettingsChange = (settings: SessionSettings) => {
     setEditableSettings(settings)
@@ -203,27 +227,152 @@ export function SessionDetailDialog({
               </>
             )}
           </div>
-          <DialogDescription>
-            {session.mode === '4-player' ? '4人打ち' : '3人打ち'} • {hanchans.length}半荘
-            {isEditMode && ' • 編集モード'}
+          <DialogDescription className="space-y-1">
+            <div>
+              {session.mode === '4-player' ? '4人打ち' : '3人打ち'} • {hanchans.length}半荘
+              {isEditMode && ' • 編集モード'}
+            </div>
+            {!isEditMode && (
+              <div className="text-xs opacity-80">
+                レート{session.rate} • ウマ{session.umaValue} • チップ{session.chipRate} • {session.umaRule === 'standard' ? '標準' : '2位マイナス'}
+              </div>
+            )}
           </DialogDescription>
         </DialogHeader>
 
         {!isEditMode ? (
           <>
-            {/* 閲覧モード: セッション設定表示 */}
-            <div className="grid grid-cols-2 gap-2 text-sm bg-muted/30 p-3 rounded-md">
-              <div>モード: {session.mode === '4-player' ? '4人打ち' : '3人打ち'}</div>
-              <div>レート: {session.rate}</div>
-              <div>ウマ: {session.umaValue}</div>
-              <div>チップレート: {session.chipRate}</div>
-              <div>ルール: {session.umaRule === 'standard' ? '標準' : '2位マイナス'}</div>
-            </div>
+            {/* 閲覧モード: プレイヤー成績テーブル */}
+            <Card className="py-0">
+              <CardContent className="p-2">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-xs table-fixed">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="p-0.5 text-center w-4 text-muted-foreground text-[10px]"></th>
+                        {playerNames.map((name: string, idx: number) => (
+                          <th key={idx} className="p-1 text-center font-semibold">
+                            {name}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* 小計行 */}
+                      <tr className="bg-muted/50">
+                        <td className="p-0.5 font-medium text-center text-[10px] w-4">小計</td>
+                        {playerNames.map((_, playerIdx: number) => {
+                          const totals = calculatePlayerTotals(
+                            playerIdx,
+                            hanchans as any,
+                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                          )
+                          const sign = totals.subtotal >= 0 ? '+' : ''
+                          return (
+                            <td key={playerIdx} className="p-1 text-center">
+                              <div className="font-semibold text-sm">
+                                {sign}{totals.subtotal}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">
+                                ({sign}{totals.scoreTotal}+{totals.umaTotal * session.umaValue})
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+
+                      {/* チップ行 */}
+                      <tr>
+                        <td className="p-0.5 font-medium text-center text-[10px] w-4">CP</td>
+                        {playerNames.map((_, playerIdx: number) => {
+                          const totals = calculatePlayerTotals(
+                            playerIdx,
+                            hanchans as any,
+                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                          )
+                          return (
+                            <td key={playerIdx} className="p-1 text-center">
+                              <div className="font-semibold text-base">
+                                {totals.chips}
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+
+                      {/* 収支行 */}
+                      <tr className="bg-muted/30">
+                        <td className="p-0.5 font-medium text-center text-[10px] w-4">収支</td>
+                        {playerNames.map((_, playerIdx: number) => {
+                          const totals = calculatePlayerTotals(
+                            playerIdx,
+                            hanchans as any,
+                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                          )
+                          const sign = totals.payout >= 0 ? '+' : ''
+                          return (
+                            <td key={playerIdx} className="p-1 text-center font-semibold">
+                              {sign}{totals.payout}
+                            </td>
+                          )
+                        })}
+                      </tr>
+
+                      {/* 場代行 */}
+                      <tr>
+                        <td className="p-0.5 font-medium text-center text-[10px] w-4">場代</td>
+                        {playerNames.map((_, playerIdx: number) => {
+                          const totals = calculatePlayerTotals(
+                            playerIdx,
+                            hanchans as any,
+                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                          )
+                          return (
+                            <td key={playerIdx} className="p-1 text-center">
+                              <div className="font-semibold text-base">
+                                {totals.parlorFee}
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+
+                      {/* 最終収支行 */}
+                      <tr className="bg-primary/10 border-t">
+                        <td className="p-0.5 font-bold text-center text-[10px] w-4">最終</td>
+                        {playerNames.map((_, playerIdx: number) => {
+                          const totals = calculatePlayerTotals(
+                            playerIdx,
+                            hanchans as any,
+                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                          )
+                          const sign = totals.finalPayout >= 0 ? '+' : ''
+                          const textColor =
+                            totals.finalPayout > 0
+                              ? 'text-green-600'
+                              : totals.finalPayout < 0
+                                ? 'text-red-600'
+                                : ''
+                          return (
+                            <td
+                              key={playerIdx}
+                              className={`p-1 text-center font-bold text-base ${textColor}`}
+                            >
+                              {sign}{totals.finalPayout}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* 閲覧モード: 半荘テーブル */}
             <Card className="py-0">
               <CardContent className="p-2">
-                <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                <div className="overflow-x-auto max-h-[calc(60vh-180px)] overflow-y-auto">
                   <table className="w-full border-collapse text-xs table-fixed">
                     <thead className="sticky top-0 z-10 bg-white">
                       <tr className="border-b">
@@ -329,6 +478,7 @@ export function SessionDetailDialog({
                   handleHanchansChange(newHanchans)
                 }}
                 onAddNewUser={addNewUser}
+                getExcludeUserIds={getExcludeUserIds}
               />
 
               <TotalsPanel

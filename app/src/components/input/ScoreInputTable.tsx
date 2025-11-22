@@ -27,6 +27,7 @@ interface ScoreInputTableProps {
   onHanchansChange: (hanchans: Hanchan[]) => void
   onPlayerChange: (playerIndex: number, userId: string | null, playerName: string) => void
   onAddNewUser: (name: string) => Promise<User>
+  getExcludeUserIds: (currentPlayerIndex: number) => string[]
 }
 
 export function ScoreInputTable({
@@ -38,6 +39,7 @@ export function ScoreInputTable({
   onHanchansChange,
   onPlayerChange,
   onAddNewUser,
+  getExcludeUserIds,
 }: ScoreInputTableProps) {
   const playerCount = hanchans[0]?.players.length || 0
 
@@ -141,6 +143,7 @@ export function ScoreInputTable({
                         users={users}
                         onAddUser={onAddNewUser}
                         excludeMainUser={true}
+                        excludeUserIds={getExcludeUserIds(idx)}
                       />
                     )}
                   </th>

@@ -29,6 +29,7 @@ export interface SessionSummary {
   hanchanCount: number;      // 入力済み半荘数
   totalPayout: number;       // 最終収支合計
   totalChips: number;        // チップ合計
+  totalParlorFee: number;    // 場代合計
   averageRank: number;       // 平均着順
   rankCounts: {
     first: number;
