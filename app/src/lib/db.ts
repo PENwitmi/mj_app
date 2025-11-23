@@ -50,6 +50,7 @@ export interface Session {
   parlorFee: number;         // 場代（デフォルト: 0）
   umaRule: UmaRule;          // 'standard' | 'second-minus'
   summary?: SessionSummary;  // 事前計算されたサマリー（パフォーマンス最適化）
+  memo?: string;             // メモ（最大200文字、オプショナル）
   createdAt: Date;           // 作成日時
   updatedAt: Date;           // 更新日時
 }

@@ -15,12 +15,14 @@ import {
   dbHanchansToUIHanchans,
   uiDataToSaveData,
   updateSession,
+  updateSessionMemo,
   type UIHanchan
 } from '@/lib/db-utils'
 import type { Session, Hanchan, PlayerResult, User } from '@/lib/db-utils'
 import type { SessionSettings } from '@/components/input/SessionSettings'
 import { ScoreInputTable } from '@/components/input/ScoreInputTable'
 import { TotalsPanel, calculatePlayerTotals } from '@/components/input/TotalsPanel'
+import { SessionMemoInput } from '@/components/SessionMemoInput'
 import { logger } from '@/lib/logger'
 
 // getSessionWithDetailsの戻り値の型
@@ -178,6 +180,17 @@ export function SessionDetailDialog({
     setHasUnsavedChanges(true)
   }
 
+  // メモ保存
+  const handleMemoSave = async (memo: string) => {
+    if (!sessionData) return
+
+    await updateSessionMemo(sessionData.session.id, memo)
+
+    // データ再読み込み
+    const updatedData = await getSessionWithDetails(sessionData.session.id)
+    setSessionData(updatedData)
+  }
+
   if (!sessionData) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -227,7 +240,7 @@ export function SessionDetailDialog({
               </>
             )}
           </div>
-          <DialogDescription className="space-y-1">
+          <div className="text-sm text-muted-foreground space-y-1">
             <div>
               {session.mode === '4-player' ? '4人打ち' : '3人打ち'} • {hanchans.length}半荘
               {isEditMode && ' • 編集モード'}
@@ -237,11 +250,19 @@ export function SessionDetailDialog({
                 レート{session.rate} • ウマ{session.umaValue} • チップ{session.chipRate} • {session.umaRule === 'standard' ? '標準' : '2位マイナス'}
               </div>
             )}
-          </DialogDescription>
+          </div>
         </DialogHeader>
 
         {!isEditMode ? (
           <>
+            {/* 閲覧モード: メモ編集エリア */}
+            <div className="px-4 py-3 border-b">
+              <SessionMemoInput
+                value={session.memo || ''}
+                onSave={handleMemoSave}
+              />
+            </div>
+
             {/* 閲覧モード: プレイヤー成績テーブル */}
             <Card className="py-0">
               <CardContent className="p-2">

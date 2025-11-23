@@ -114,11 +114,22 @@ export function HistoryTab({ mainUser, users, addNewUser }: HistoryTabProps) {
           >
             <CardHeader className="px-3">
               <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <CardTitle className="text-base text-muted-foreground font-normal">📅 {session.date}</CardTitle>
-                  <span className="text-base text-muted-foreground">
-                    {session.mode === '4-player' ? '4人打ち' : '3人打ち'} | {summary.hanchanCount}半荘
-                  </span>
+                <div className="flex flex-col gap-1">
+                  {/* 日付・モード */}
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-base text-muted-foreground font-normal">📅 {session.date}</CardTitle>
+                    <span className="text-base text-muted-foreground">
+                      {session.mode === '4-player' ? '4人打ち' : '3人打ち'} | {summary.hanchanCount}半荘
+                    </span>
+                  </div>
+
+                  {/* メモ表示 */}
+                  {session.memo && (
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <span>💬</span>
+                      <span className="line-clamp-1">{session.memo}</span>
+                    </div>
+                  )}
                 </div>
                 <Button
                   variant="ghost"

@@ -609,3 +609,45 @@ export function uiDataToSaveData(
     }))
   }
 }
+
+// ========================================
+// Session Memo Functions
+// ========================================
+
+/**
+ * セッションメモを更新
+ * @param sessionId セッションID
+ * @param memo メモ内容（最大200文字）
+ */
+export async function updateSessionMemo(
+  sessionId: string,
+  memo: string
+): Promise<void> {
+  try {
+    logger.info('セッションメモ更新開始', {
+      context: 'db.sessions.updateSessionMemo',
+      data: { sessionId, memoLength: memo.length }
+    });
+
+    const trimmedMemo = memo.trim();
+
+    await db.sessions.update(sessionId, {
+      memo: trimmedMemo || undefined,  // 空文字の場合はundefined
+      updatedAt: new Date()
+    });
+
+    logger.info('セッションメモ更新成功', {
+      context: 'db.sessions.updateSessionMemo',
+      data: { sessionId }
+    });
+  } catch (err) {
+    const error = new DatabaseError('セッションメモの更新に失敗しました', {
+      originalError: err
+    });
+    logger.error(error.message, {
+      context: 'db.sessions.updateSessionMemo',
+      error
+    });
+    throw error;
+  }
+}
