@@ -24,6 +24,7 @@ export {
   saveSession,
   deleteSession,
   updateSession,
+  updateSessionMemo,
   sessionToSettings,
   dbHanchansToUIHanchans,
   uiDataToSaveData
