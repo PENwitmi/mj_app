@@ -231,6 +231,51 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
     }
   }, [filteredSessions, selectedUserId])  // ✅ selectedUserIdを依存配列に追加
 
+  // 基本成績統計（Issue #4）
+  // TODO: 将来的にsrc/lib/db/analysis.tsに移行すべき統計計算ロジック
+  // 現在はrevenueStats, pointStats, chipStatsも同様にここで計算している
+  // Issue追跡: #11（統計計算ロジックのリファクタリング）
+  const basicStats = useMemo(() => {
+    if (filteredSessions.length === 0) return null
+
+    const totalSessions = filteredSessions.length
+    const totalHanchans = hanchans.filter(h =>
+      h.players.some(p => !p.isSpectator)
+    ).length
+
+    // 平均スコア/半荘 = 総ポイント ÷ 総半荘数
+    const totalPoints = pointStats?.pointBalance ?? 0
+    const averageScorePerHanchan = totalHanchans > 0
+      ? totalPoints / totalHanchans
+      : 0
+
+    // 平均収支/セッション = 総収支 ÷ セッション数
+    const totalRevenue = revenueStats?.totalBalance ?? 0
+    const averageRevenuePerSession = totalSessions > 0
+      ? totalRevenue / totalSessions
+      : 0
+
+    // 平均着順: selectedMode='all'時はundefined（3人打ちと4人打ち混在で計算不可）
+    const averageRank = selectedMode !== 'all' && rankStats
+      ? rankStats.averageRank
+      : undefined
+
+    // 平均チップ/半荘 = 総チップ ÷ 総半荘数
+    const totalChips = chipStats?.chipBalance ?? 0
+    const averageChipsPerHanchan = totalHanchans > 0
+      ? totalChips / totalHanchans
+      : 0
+
+    return {
+      totalSessions,
+      totalHanchans,
+      averageScorePerHanchan,
+      averageRevenuePerSession,
+      averageRank,
+      averageChipsPerHanchan
+    }
+  }, [filteredSessions, hanchans, revenueStats, pointStats, rankStats, chipStats, selectedMode])
+
   // ローディング・エラー表示
   if (loading) {
     return (
@@ -288,6 +333,71 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
         </Card>
       ) : (
         <>
+          {/* 基本成績セクション（Issue #4） */}
+          {basicStats && (
+            <Card className="py-3">
+              <CardContent className="p-3">
+                <div className="text-base font-semibold mb-2">📌 基本成績</div>
+                <div className="grid grid-cols-3 gap-3">
+                  {/* 総半荘数 */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs text-muted-foreground mb-1">半荘</span>
+                    <span className="text-xl font-bold">{basicStats.totalHanchans}半荘</span>
+                  </div>
+
+                  {/* 平均着順 */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs text-muted-foreground mb-1">平均着順</span>
+                    {basicStats.averageRank !== undefined ? (
+                      <span className="text-xl font-bold">{basicStats.averageRank.toFixed(2)}位</span>
+                    ) : (
+                      <span className="text-xl text-muted-foreground">-</span>
+                    )}
+                  </div>
+
+                  {/* 平均スコア（半荘あたり） */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs text-muted-foreground mb-1">平均スコア</span>
+                    <span className={`text-xl font-bold ${
+                      basicStats.averageScorePerHanchan >= 0 ? 'text-blue-600' : 'text-red-600'
+                    }`}>
+                      {basicStats.averageScorePerHanchan >= 0 ? '+' : ''}
+                      {Math.round(basicStats.averageScorePerHanchan)}点
+                    </span>
+                  </div>
+
+                  {/* 総セッション数 */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs text-muted-foreground mb-1">セッション</span>
+                    <span className="text-xl font-bold">{basicStats.totalSessions}回</span>
+                  </div>
+
+                  {/* 平均収支（セッションあたり） */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs text-muted-foreground mb-1">平均収支</span>
+                    <span className={`text-xl font-bold ${
+                      basicStats.averageRevenuePerSession >= 0 ? 'text-blue-600' : 'text-red-600'
+                    }`}>
+                      {basicStats.averageRevenuePerSession >= 0 ? '+' : ''}
+                      {Math.round(basicStats.averageRevenuePerSession)}pt
+                    </span>
+                  </div>
+
+                  {/* 平均チップ（半荘あたり） */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs text-muted-foreground mb-1">平均チップ</span>
+                    <span className={`text-xl font-bold ${
+                      basicStats.averageChipsPerHanchan >= 0 ? 'text-blue-600' : 'text-red-600'
+                    }`}>
+                      {basicStats.averageChipsPerHanchan >= 0 ? '+' : ''}
+                      {basicStats.averageChipsPerHanchan.toFixed(2)}枚
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* 統合統計カード（着順・収支・ポイント・チップ） */}
           {(revenueStats || pointStats || chipStats || rankStats) && (
             <Card className="py-3">
