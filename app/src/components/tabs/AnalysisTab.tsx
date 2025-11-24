@@ -261,10 +261,10 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
       ? rankStats.averageRank
       : undefined
 
-    // 平均チップ/半荘 = 総チップ ÷ 総半荘数
+    // 平均チップ/セッション = 総チップ ÷ セッション数
     const totalChips = chipStats?.chipBalance ?? 0
-    const averageChipsPerHanchan = totalHanchans > 0
-      ? totalChips / totalHanchans
+    const averageChipsPerSession = totalSessions > 0
+      ? totalChips / totalSessions
       : 0
 
     return {
@@ -273,7 +273,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
       averageScorePerHanchan,
       averageRevenuePerSession,
       averageRank,
-      averageChipsPerHanchan
+      averageChipsPerSession
     }
   }, [filteredSessions, hanchans, revenueStats, pointStats, rankStats, chipStats, selectedMode])
 
@@ -393,14 +393,14 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
                     </span>
                   </div>
 
-                  {/* 平均チップ（半荘あたり） */}
+                  {/* 平均チップ（セッションあたり） */}
                   <div className="flex flex-col items-center">
                     <span className="text-xs text-muted-foreground mb-1">平均チップ</span>
                     <span className={`text-xl font-bold ${
-                      basicStats.averageChipsPerHanchan >= 0 ? 'text-blue-600' : 'text-red-600'
+                      basicStats.averageChipsPerSession >= 0 ? 'text-blue-600' : 'text-red-600'
                     }`}>
-                      {basicStats.averageChipsPerHanchan >= 0 ? '+' : ''}
-                      {basicStats.averageChipsPerHanchan.toFixed(2)}枚
+                      {basicStats.averageChipsPerSession >= 0 ? '+' : ''}
+                      {basicStats.averageChipsPerSession.toFixed(2)}枚
                     </span>
                   </div>
                 </div>
