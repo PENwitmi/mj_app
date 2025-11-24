@@ -318,16 +318,78 @@ export function calculateRecordStatistics(
   let maxRevenueInSession = { value: -Infinity, date: '' }
   let minRevenueInSession = { value: Infinity, date: '' }
 
-  // 連続記録用の配列（時系列順）
-  const ranksTimeline: Array<{ rank: number; mode: GameMode }> = []
+  // 1. 全半荘を時系列順に収集・ソート
+  type HanchanWithContext = {
+    date: string
+    hanchanNumber: number
+    session: Session
+    hanchan: Hanchan & { players: PlayerResult[] }
+    userResult: PlayerResult
+  }
 
-  // 1. 半荘単位の最高/最低スコア計算 + セッション単位の計算
+  const allHanchans: HanchanWithContext[] = []
+
   sessions.forEach(({ session, hanchans }) => {
-    // hanchansがundefinedの場合はスキップ
     if (!hanchans) return
 
-    let sessionPoints = 0 // セッション単位のポイント小計合計
-    let sessionRevenue = 0 // セッション単位の収支
+    hanchans.forEach(hanchan => {
+      const userResult = hanchan.players.find(p => p.userId === targetUserId)
+
+      // 見学者・未入力を除外
+      if (!userResult || userResult.isSpectator || userResult.score === null) {
+        return
+      }
+
+      allHanchans.push({
+        date: session.date,
+        hanchanNumber: hanchan.hanchanNumber,
+        session,
+        hanchan,
+        userResult
+      })
+    })
+  })
+
+  // 時系列順にソート（date → session.createdAt → hanchanNumber）
+  allHanchans.sort((a, b) => {
+    // 1. 日付でソート
+    if (a.date !== b.date) {
+      return a.date.localeCompare(b.date)
+    }
+
+    // 2. 同じ日付の場合、セッションの作成日時でソート
+    const aTime = a.session.createdAt.getTime()
+    const bTime = b.session.createdAt.getTime()
+    if (aTime !== bTime) {
+      return aTime - bTime
+    }
+
+    // 3. 同じセッション内では半荘番号でソート
+    return a.hanchanNumber - b.hanchanNumber
+  })
+
+  // 2. 半荘単位の最高/最低スコアを計算
+  allHanchans.forEach(({ date, userResult }) => {
+    if (userResult.score > maxScoreInHanchan.value) {
+      maxScoreInHanchan = { value: userResult.score, date }
+    }
+    if (userResult.score < minScoreInHanchan.value) {
+      minScoreInHanchan = { value: userResult.score, date }
+    }
+  })
+
+  // 3. セッション単位のポイント・収支を計算
+  const sessionResults = new Map<string, {
+    points: number
+    revenue: number
+    date: string
+  }>()
+
+  sessions.forEach(({ session, hanchans }) => {
+    if (!hanchans) return
+
+    let sessionPoints = 0
+    let sessionRevenue = 0
     let sessionChips = 0
     let sessionParlorFee = 0
     let chipsInitialized = false
@@ -335,76 +397,70 @@ export function calculateRecordStatistics(
     hanchans.forEach(hanchan => {
       const userResult = hanchan.players.find(p => p.userId === targetUserId)
 
-      // 見学者・未入力を除外（score === 0 は集計対象）
       if (!userResult || userResult.isSpectator || userResult.score === null) {
         return
       }
 
-      // === 半荘単位の最高/最低スコア ===
-      if (userResult.score > maxScoreInHanchan.value) {
-        maxScoreInHanchan = { value: userResult.score, date: session.date }
-      }
-      if (userResult.score < minScoreInHanchan.value) {
-        minScoreInHanchan = { value: userResult.score, date: session.date }
-      }
-
-      // === セッション単位のポイント小計計算 ===
+      // ポイント小計計算
       // TODO: Issue #11でリファクタリング時にロジック統合（pointStatsと重複）
       const umaPoints = umaMarkToValue(userResult.umaMark)
       const subtotal = userResult.score + umaPoints * session.umaValue
       sessionPoints += subtotal
 
-      // === セッション単位の収支計算 ===
+      // 収支計算
       // TODO: Issue #11でリファクタリング時にロジック統合（revenueStatsと重複）
-      // chips/parlorFeeはセッションで1回のみ取得
       if (!chipsInitialized) {
         sessionChips = userResult.chips || 0
         sessionParlorFee = userResult.parlorFee || 0
         chipsInitialized = true
       }
 
-      // レート適用してセッション収支に加算
       const scorePayout = subtotal * session.rate
       sessionRevenue += scorePayout
-
-      // === 着順を記録（連続記録計算用） ===
-      const ranks = calculateRanksFromScores(hanchan.players)
-      const rank = ranks.get(userResult.id)
-      if (rank) {
-        ranksTimeline.push({ rank, mode: session.mode })
-      }
     })
 
-    // セッション終了時にchips/parlorFeeを加算
+    // chips/parlorFee加算
     if (chipsInitialized) {
       const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
       sessionRevenue += chipsPayout
     }
 
-    // === セッション単位の最高/最低ポイント ===
-    if (sessionPoints > maxPointsInSession.value) {
-      maxPointsInSession = { value: sessionPoints, date: session.date }
-    }
-    if (sessionPoints < minPointsInSession.value) {
-      minPointsInSession = { value: sessionPoints, date: session.date }
-    }
+    sessionResults.set(session.id, {
+      points: sessionPoints,
+      revenue: sessionRevenue,
+      date: session.date
+    })
+  })
 
-    // === セッション単位の最高/最低収支 ===
-    if (sessionRevenue > maxRevenueInSession.value) {
-      maxRevenueInSession = { value: sessionRevenue, date: session.date }
+  // セッション単位の最高/最低を判定
+  sessionResults.forEach(({ points, revenue, date }) => {
+    if (points > maxPointsInSession.value) {
+      maxPointsInSession = { value: points, date }
     }
-    if (sessionRevenue < minRevenueInSession.value) {
-      minRevenueInSession = { value: sessionRevenue, date: session.date }
+    if (points < minPointsInSession.value) {
+      minPointsInSession = { value: points, date }
+    }
+    if (revenue > maxRevenueInSession.value) {
+      maxRevenueInSession = { value: revenue, date }
+    }
+    if (revenue < minRevenueInSession.value) {
+      minRevenueInSession = { value: revenue, date }
     }
   })
 
-  // 2. 連続記録計算
+  // 4. 連続記録計算（時系列順に処理）
   let maxTopStreak = 0
   let currentTopStreak = 0
   let maxLastStreak = 0
   let currentLastStreak = 0
 
-  ranksTimeline.forEach(({ rank, mode }) => {
+  allHanchans.forEach(({ session, hanchan, userResult }) => {
+    // 着順を計算
+    const ranks = calculateRanksFromScores(hanchan.players)
+    const rank = ranks.get(userResult.id)
+
+    if (!rank) return
+
     // 連続トップカウント
     if (rank === 1) {
       currentTopStreak++
@@ -413,8 +469,9 @@ export function calculateRecordStatistics(
       currentTopStreak = 0
     }
 
-    // 連続ラスカウント（selectedMode='all'でも計算、モード別に判定）
-    const lastRank = mode === '4-player' ? 4 : 3
+    // 連続ラスカウント（モード別に最下位を判定）
+    const lastRank = session.mode === '4-player' ? 4 : 3
+
     if (rank === lastRank) {
       currentLastStreak++
       maxLastStreak = Math.max(maxLastStreak, currentLastStreak)
