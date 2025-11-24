@@ -504,4 +504,173 @@ test.describe('Analysis Tab Statistics - Phase 1', () => {
     // すべての要素が正常に表示されていることを確認（既にtoBeVisible()で確認済み）
     console.log('✅ TC-401 PASS: No impact on existing features');
   });
+
+  /**
+   * TC-003: 平均チップ/セッション計算テスト (Issue #12)
+   * 目的: 平均チップが「総チップ ÷ セッション数」で正しく計算されることを確認
+   */
+  test('TC-003: Average chips per session calculation (Issue #12)', async ({ page }) => {
+    console.log('\n=== TC-003: Average Chips per Session Test ===');
+
+    // ===================================
+    // Step 1: セッション1作成（2半荘、チップ+10）
+    // ===================================
+
+    await page.getByRole('button', { name: '4人打ち麻雀' }).click();
+    const today = new Date().toISOString().split('T')[0];
+    await page.locator('input[type="date"]').fill(today);
+
+    const scoreTable = getScoreInputTable(page);
+
+    // 半荘1の点数入力
+    const h1Scores = [10, 10, 10, -30];
+    for (let p = 1; p <= 3; p++) {
+      const input = getScoreInput(page, scoreTable, 1, p);
+      await input.clear();
+      await input.fill(String(h1Scores[p - 1]));
+    }
+
+    await page.waitForTimeout(300);
+
+    // 半荘2を追加
+    await page.getByRole('button', { name: /半荘を追加/i }).click();
+    await page.waitForTimeout(300);
+
+    // 半荘2の点数入力
+    const h2Scores = [20, 10, -10, -20];
+    for (let p = 1; p <= 3; p++) {
+      const input = getScoreInput(page, scoreTable, 2, p);
+      await input.clear();
+      await input.fill(String(h2Scores[p - 1]));
+    }
+
+    await page.waitForTimeout(300);
+
+    // チップ+10を入力（P1）
+    const cpInputs1 = await page.locator('tr:has(td:text("CP")) input').all();
+    await cpInputs1[0].clear();
+    await cpInputs1[0].fill('10');
+
+    await page.waitForTimeout(500);
+
+    // 保存
+    await page.getByRole('button', { name: /保存/i }).click();
+    await expect(page.locator('text=セッションを保存しました')).toBeVisible({ timeout: 5000 });
+
+    console.log('Session 1: 2 hanchans, +10 chips');
+
+    // ===================================
+    // Step 2: セッション2作成（3半荘、チップ+15）
+    // ===================================
+
+    await page.getByRole('tab', { name: '新規入力' }).click();
+    await page.waitForTimeout(500);
+
+    await page.getByRole('button', { name: '4人打ち麻雀' }).click();
+    await page.locator('input[type="date"]').fill(today);
+
+    const scoreTable2 = getScoreInputTable(page);
+
+    // 半荘1の点数入力
+    const s2h1Scores = [15, 5, -5, -15];
+    for (let p = 1; p <= 3; p++) {
+      const input = getScoreInput(page, scoreTable2, 1, p);
+      await input.clear();
+      await input.fill(String(s2h1Scores[p - 1]));
+    }
+
+    await page.waitForTimeout(300);
+
+    // 半荘2, 3を追加
+    await page.getByRole('button', { name: /半荘を追加/i }).click();
+    await page.waitForTimeout(300);
+    await page.getByRole('button', { name: /半荘を追加/i }).click();
+    await page.waitForTimeout(300);
+
+    // 半荘2の点数入力
+    const s2h2Scores = [10, 10, 10, -30];
+    for (let p = 1; p <= 3; p++) {
+      const input = getScoreInput(page, scoreTable2, 2, p);
+      await input.clear();
+      await input.fill(String(s2h2Scores[p - 1]));
+    }
+
+    await page.waitForTimeout(300);
+
+    // 半荘3の点数入力
+    const s2h3Scores = [14, 0, 0, -14];
+    for (let p = 1; p <= 3; p++) {
+      const input = getScoreInput(page, scoreTable2, 3, p);
+      await input.clear();
+      await input.fill(String(s2h3Scores[p - 1]));
+    }
+
+    await page.waitForTimeout(300);
+
+    // チップ+15を入力（P1）
+    const cpInputs2 = await page.locator('tr:has(td:text("CP")) input').all();
+    await cpInputs2[0].clear();
+    await cpInputs2[0].fill('15');
+
+    await page.waitForTimeout(500);
+
+    // 保存
+    await page.getByRole('button', { name: /保存/i }).click();
+    await expect(page.locator('text=セッションを保存しました')).toBeVisible({ timeout: 5000 });
+
+    console.log('Session 2: 3 hanchans, +15 chips');
+
+    // ===================================
+    // Step 3: 分析タブで平均チップを確認
+    // ===================================
+
+    await page.getByRole('tab', { name: '分析' }).click();
+    await page.waitForTimeout(1000);
+
+    // 基本成績セクションの平均チップを取得
+    const basicStatsSection = page.locator('text=📌 基本成績').locator('..');
+    const averageChipText = await basicStatsSection.locator('text=平均チップ').locator('..').textContent();
+
+    console.log('Average Chip Display:', averageChipText);
+
+    // 平均チップの数値を抽出（例: "+12.50枚"）
+    const chipMatch = averageChipText?.match(/([+-]?\d+\.\d+)枚/);
+    const actualAverageChips = chipMatch ? parseFloat(chipMatch[1]) : 0;
+
+    console.log('Actual Average Chips:', actualAverageChips);
+
+    // ===================================
+    // Step 4: 期待値の計算
+    // ===================================
+
+    const totalSessions = 2;
+    const totalHanchans = 5; // Session1: 2, Session2: 3
+    const totalChips = 25;   // Session1: +10, Session2: +15
+
+    const expectedAverageChips = totalChips / totalSessions; // 25 ÷ 2 = 12.50
+    const wrongAverageChips = totalChips / totalHanchans;    // 25 ÷ 5 = 5.00
+
+    console.log('\n=== Calculation Verification ===');
+    console.log('Total Sessions:', totalSessions);
+    console.log('Total Hanchans:', totalHanchans);
+    console.log('Total Chips:', totalChips);
+    console.log('Expected (÷ sessions):', expectedAverageChips);
+    console.log('Wrong (÷ hanchans):', wrongAverageChips);
+
+    // ===================================
+    // Assertions
+    // ===================================
+
+    if (actualAverageChips === expectedAverageChips) {
+      console.log('✅ FIX SUCCESS: Average chips = 12.50 (÷ sessions)');
+    } else if (actualAverageChips === wrongAverageChips) {
+      console.log('❌ BUG STILL EXISTS: Average chips = 5.00 (÷ hanchans)');
+    } else {
+      console.log(`⚠️  UNEXPECTED: Average chips = ${actualAverageChips}`);
+    }
+
+    expect(actualAverageChips).toBe(expectedAverageChips);
+
+    console.log('✅ TC-003 PASS: Average chips calculated correctly per session');
+  });
 });
