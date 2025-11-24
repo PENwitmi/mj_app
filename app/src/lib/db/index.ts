@@ -53,6 +53,7 @@ export {
   calculateRevenueStatistics,
   calculatePointStatistics,
   calculateChipStatistics,
+  calculateRecordStatistics,
   filterSessionsByPeriod,
   filterSessionsByMode
 } from './analysis';
@@ -63,5 +64,6 @@ export type {
   RevenueStatistics,
   PointStatistics,
   ChipStatistics,
+  RecordStatistics,
   AnalysisStatistics
 } from './analysis';

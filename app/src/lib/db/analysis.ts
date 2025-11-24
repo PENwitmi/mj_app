@@ -1,4 +1,5 @@
-import type { PlayerResult, GameMode } from '../db';
+import type { PlayerResult, GameMode, Session, Hanchan } from '../db';
+import { umaMarkToValue } from '../uma-utils';
 
 // ========================================
 // Analysis Types
@@ -67,6 +68,31 @@ export interface ChipStatistics {
   plusChips: number          // プラスチップ合計
   minusChips: number         // マイナスチップ合計
   chipBalance: number        // チップ収支（plusChips + minusChips）
+}
+
+/**
+ * 記録統計
+ */
+export interface RecordStatistics {
+  // 半荘単位
+  maxScoreInHanchan: { value: number; date: string }      // 半荘最高得点 + 日付
+  minScoreInHanchan: { value: number; date: string }      // 半荘最低得点 + 日付
+
+  // セッション単位（ポイント小計合計）
+  maxPointsInSession: { value: number; date: string }     // セッション最高ポイント + 日付
+  minPointsInSession: { value: number; date: string }     // セッション最低ポイント + 日付
+
+  // セッション単位（収支）
+  maxRevenueInSession: { value: number; date: string }    // セッション最高収支 + 日付
+  minRevenueInSession: { value: number; date: string }    // セッション最低収支 + 日付
+
+  // 連続記録（過去最大）
+  maxConsecutiveTopStreak: number                          // 最大連続トップ記録
+  maxConsecutiveLastStreak: number                         // 最大連続ラス記録
+
+  // 現在の連続（オプション）
+  currentTopStreak?: number                                // 現在の連続トップ中
+  currentLastStreak?: number                               // 現在の連続ラス中
 }
 
 /**
@@ -268,6 +294,146 @@ export function calculateChipStatistics(
     plusChips,
     minusChips,
     chipBalance: plusChips + minusChips
+  }
+}
+
+/**
+ * 記録統計を計算
+ *
+ * @param sessions セッション配列（各セッションの半荘データを含む）
+ * @param targetUserId 対象ユーザーID
+ * @param selectedMode ゲームモード（'all'の場合も計算するが、モード別に最下位を判定）
+ * @returns 記録統計
+ */
+export function calculateRecordStatistics(
+  sessions: Array<{ session: Session; hanchans?: Array<Hanchan & { players: PlayerResult[] }> }>,
+  targetUserId: string,
+  _selectedMode: GameMode | 'all' // 将来の拡張用（現在は各半荘のmodeを使用）
+): RecordStatistics {
+  // 初期値設定
+  let maxScoreInHanchan = { value: -Infinity, date: '' }
+  let minScoreInHanchan = { value: Infinity, date: '' }
+  let maxPointsInSession = { value: -Infinity, date: '' }
+  let minPointsInSession = { value: Infinity, date: '' }
+  let maxRevenueInSession = { value: -Infinity, date: '' }
+  let minRevenueInSession = { value: Infinity, date: '' }
+
+  // 連続記録用の配列（時系列順）
+  const ranksTimeline: Array<{ rank: number; mode: GameMode }> = []
+
+  // 1. 半荘単位の最高/最低スコア計算 + セッション単位の計算
+  sessions.forEach(({ session, hanchans }) => {
+    // hanchansがundefinedの場合はスキップ
+    if (!hanchans) return
+
+    let sessionPoints = 0 // セッション単位のポイント小計合計
+    let sessionRevenue = 0 // セッション単位の収支
+    let sessionChips = 0
+    let sessionParlorFee = 0
+    let chipsInitialized = false
+
+    hanchans.forEach(hanchan => {
+      const userResult = hanchan.players.find(p => p.userId === targetUserId)
+
+      // 見学者・未入力を除外（score === 0 は集計対象）
+      if (!userResult || userResult.isSpectator || userResult.score === null) {
+        return
+      }
+
+      // === 半荘単位の最高/最低スコア ===
+      if (userResult.score > maxScoreInHanchan.value) {
+        maxScoreInHanchan = { value: userResult.score, date: session.date }
+      }
+      if (userResult.score < minScoreInHanchan.value) {
+        minScoreInHanchan = { value: userResult.score, date: session.date }
+      }
+
+      // === セッション単位のポイント小計計算 ===
+      // TODO: Issue #11でリファクタリング時にロジック統合（pointStatsと重複）
+      const umaPoints = umaMarkToValue(userResult.umaMark)
+      const subtotal = userResult.score + umaPoints * session.umaValue
+      sessionPoints += subtotal
+
+      // === セッション単位の収支計算 ===
+      // TODO: Issue #11でリファクタリング時にロジック統合（revenueStatsと重複）
+      // chips/parlorFeeはセッションで1回のみ取得
+      if (!chipsInitialized) {
+        sessionChips = userResult.chips || 0
+        sessionParlorFee = userResult.parlorFee || 0
+        chipsInitialized = true
+      }
+
+      // レート適用してセッション収支に加算
+      const scorePayout = subtotal * session.rate
+      sessionRevenue += scorePayout
+
+      // === 着順を記録（連続記録計算用） ===
+      const ranks = calculateRanksFromScores(hanchan.players)
+      const rank = ranks.get(userResult.id)
+      if (rank) {
+        ranksTimeline.push({ rank, mode: session.mode })
+      }
+    })
+
+    // セッション終了時にchips/parlorFeeを加算
+    if (chipsInitialized) {
+      const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
+      sessionRevenue += chipsPayout
+    }
+
+    // === セッション単位の最高/最低ポイント ===
+    if (sessionPoints > maxPointsInSession.value) {
+      maxPointsInSession = { value: sessionPoints, date: session.date }
+    }
+    if (sessionPoints < minPointsInSession.value) {
+      minPointsInSession = { value: sessionPoints, date: session.date }
+    }
+
+    // === セッション単位の最高/最低収支 ===
+    if (sessionRevenue > maxRevenueInSession.value) {
+      maxRevenueInSession = { value: sessionRevenue, date: session.date }
+    }
+    if (sessionRevenue < minRevenueInSession.value) {
+      minRevenueInSession = { value: sessionRevenue, date: session.date }
+    }
+  })
+
+  // 2. 連続記録計算
+  let maxTopStreak = 0
+  let currentTopStreak = 0
+  let maxLastStreak = 0
+  let currentLastStreak = 0
+
+  ranksTimeline.forEach(({ rank, mode }) => {
+    // 連続トップカウント
+    if (rank === 1) {
+      currentTopStreak++
+      maxTopStreak = Math.max(maxTopStreak, currentTopStreak)
+    } else {
+      currentTopStreak = 0
+    }
+
+    // 連続ラスカウント（selectedMode='all'でも計算、モード別に判定）
+    const lastRank = mode === '4-player' ? 4 : 3
+    if (rank === lastRank) {
+      currentLastStreak++
+      maxLastStreak = Math.max(maxLastStreak, currentLastStreak)
+    } else {
+      currentLastStreak = 0
+    }
+  })
+
+  return {
+    maxScoreInHanchan,
+    minScoreInHanchan,
+    maxPointsInSession,
+    minPointsInSession,
+    maxRevenueInSession,
+    minRevenueInSession,
+    maxConsecutiveTopStreak: maxTopStreak,
+    maxConsecutiveLastStreak: maxLastStreak,
+    currentTopStreak: currentTopStreak > 0 ? currentTopStreak : undefined,
+    currentLastStreak: currentLastStreak > 0 ? currentLastStreak : undefined
   }
 }
 
