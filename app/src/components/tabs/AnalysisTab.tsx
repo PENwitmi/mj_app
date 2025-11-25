@@ -412,77 +412,77 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
           {recordStats && (
             <Card className="py-3">
               <CardContent className="p-3">
-                <div className="text-base font-semibold mb-3">🏆 記録</div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="text-base font-semibold mb-2">🏆 記録</div>
+                <div className="grid grid-cols-2 gap-2">
                   {/* 半荘最高得点 */}
-                  <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground mb-1">半荘最高得点</span>
-                    <span className="text-xl font-bold text-blue-600">
+                  <div className="flex flex-col items-center py-1">
+                    <span className="text-xs text-muted-foreground mb-0.5">半荘最高得点</span>
+                    <span className="text-2xl font-bold text-blue-600">
                       {recordStats.maxScoreInHanchan.value >= 0 ? '+' : ''}
                       {recordStats.maxScoreInHanchan.value.toLocaleString()}点
                     </span>
-                    <span className="text-xs text-muted-foreground mt-1">
+                    <span className="text-xs text-muted-foreground mt-0.5">
                       {recordStats.maxScoreInHanchan.date}
                     </span>
                   </div>
 
                   {/* 半荘最低得点 */}
-                  <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground mb-1">半荘最低得点</span>
-                    <span className="text-xl font-bold text-red-600">
+                  <div className="flex flex-col items-center py-1">
+                    <span className="text-xs text-muted-foreground mb-0.5">半荘最低得点</span>
+                    <span className="text-2xl font-bold text-red-600">
                       {recordStats.minScoreInHanchan.value >= 0 ? '+' : ''}
                       {recordStats.minScoreInHanchan.value.toLocaleString()}点
                     </span>
-                    <span className="text-xs text-muted-foreground mt-1">
+                    <span className="text-xs text-muted-foreground mt-0.5">
                       {recordStats.minScoreInHanchan.date}
                     </span>
                   </div>
 
                   {/* 1日最高収支 */}
-                  <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground mb-1">1日最高収支</span>
-                    <span className="text-xl font-bold text-blue-600">
+                  <div className="flex flex-col items-center py-1">
+                    <span className="text-xs text-muted-foreground mb-0.5">1日最高収支</span>
+                    <span className="text-2xl font-bold text-blue-600">
                       {recordStats.maxRevenueInSession.value >= 0 ? '+' : ''}
                       {Math.round(recordStats.maxRevenueInSession.value).toLocaleString()}pt
                     </span>
-                    <span className="text-xs text-muted-foreground mt-1">
+                    <span className="text-xs text-muted-foreground mt-0.5">
                       {recordStats.maxRevenueInSession.date}
                     </span>
                   </div>
 
                   {/* 1日最低収支 */}
-                  <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground mb-1">1日最低収支</span>
-                    <span className="text-xl font-bold text-red-600">
+                  <div className="flex flex-col items-center py-1">
+                    <span className="text-xs text-muted-foreground mb-0.5">1日最低収支</span>
+                    <span className="text-2xl font-bold text-red-600">
                       {recordStats.minRevenueInSession.value >= 0 ? '+' : ''}
                       {Math.round(recordStats.minRevenueInSession.value).toLocaleString()}pt
                     </span>
-                    <span className="text-xs text-muted-foreground mt-1">
+                    <span className="text-xs text-muted-foreground mt-0.5">
                       {recordStats.minRevenueInSession.date}
                     </span>
                   </div>
 
                   {/* 最大連続トップ */}
-                  <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground mb-1">最大連続トップ</span>
-                    <span className="text-xl font-bold text-amber-600">
+                  <div className="flex flex-col items-center py-1">
+                    <span className="text-xs text-muted-foreground mb-0.5">最大連続トップ</span>
+                    <span className="text-2xl font-bold text-amber-600">
                       {recordStats.maxConsecutiveTopStreak}連勝
                     </span>
                     {recordStats.currentTopStreak !== undefined && recordStats.currentTopStreak > 0 && (
-                      <span className="text-xs text-amber-600 mt-1">
+                      <span className="text-xs text-amber-600 mt-0.5">
                         （現在{recordStats.currentTopStreak}連勝中）
                       </span>
                     )}
                   </div>
 
                   {/* 最大連続ラス */}
-                  <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground mb-1">最大連続ラス</span>
-                    <span className="text-xl font-bold text-gray-600">
+                  <div className="flex flex-col items-center py-1">
+                    <span className="text-xs text-muted-foreground mb-0.5">最大連続ラス</span>
+                    <span className="text-2xl font-bold text-gray-600">
                       {recordStats.maxConsecutiveLastStreak}連続
                     </span>
                     {recordStats.currentLastStreak !== undefined && recordStats.currentLastStreak > 0 && (
-                      <span className="text-xs text-gray-600 mt-1">
+                      <span className="text-xs text-gray-600 mt-0.5">
                         （現在{recordStats.currentLastStreak}連続中）
                       </span>
                     )}
