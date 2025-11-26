@@ -105,6 +105,43 @@ export interface AnalysisStatistics {
   chip: ChipStatistics
 }
 
+/**
+ * 拡張収支統計（場代を含む）
+ */
+export interface ExtendedRevenueStatistics extends RevenueStatistics {
+  totalParlorFee: number     // 総場代
+}
+
+/**
+ * 基本統計
+ */
+export interface BasicStatistics {
+  totalSessions: number          // 総セッション数
+  totalHanchans: number          // 総半荘数
+  averageScorePerHanchan: number // 平均スコア/半荘
+  averageRevenuePerSession: number // 平均収支/セッション
+  averageRank?: number           // 平均着順（全体モード時はundefined）
+  averageChipsPerSession: number // 平均チップ/セッション
+}
+
+/**
+ * 統合統計（全統計を1回のイテレーションで計算）
+ */
+export interface AllStatistics {
+  revenue: ExtendedRevenueStatistics
+  point: PointStatistics
+  chip: ChipStatistics
+  basic: BasicStatistics
+}
+
+/**
+ * フィルター済みセッションの型
+ */
+export type FilteredSession = {
+  session: Session
+  hanchans?: Array<Hanchan & { players: PlayerResult[] }>
+}
+
 // ========================================
 // Analysis Functions
 // ========================================
@@ -220,80 +257,144 @@ export function calculateRankStatistics(
 }
 
 /**
- * 収支統計を計算
+ * 全統計を1回のイテレーションで計算
+ *
+ * AnalysisTab.tsxで分散していた統計計算ロジックを統合し、
+ * パフォーマンスを改善（4回のループ → 1回）
+ *
+ * @param sessions フィルター済みセッション配列
+ * @param targetUserId 対象ユーザーID
+ * @param mode ゲームモード（'all'の場合、平均着順はundefined）
+ * @param rankStats 着順統計（平均着順の取得用、事前計算済み）
+ * @returns 全統計（revenue, point, chip, basic）
  */
-export function calculateRevenueStatistics(
-  sessions: Array<{ totalPayout: number }>
-): RevenueStatistics {
+export function calculateAllStatistics(
+  sessions: FilteredSession[],
+  targetUserId: string,
+  mode: GameMode | 'all',
+  rankStats?: RankStatistics
+): AllStatistics {
+  // 収支統計用
   let totalIncome = 0
   let totalExpense = 0
+  let totalParlorFee = 0
 
-  sessions.forEach(session => {
-    if (session.totalPayout > 0) {
-      totalIncome += session.totalPayout
-    } else {
-      totalExpense += session.totalPayout // 負の値
-    }
-  })
-
-  return {
-    totalIncome,
-    totalExpense,
-    totalBalance: totalIncome + totalExpense
-  }
-}
-
-/**
- * ポイント統計を計算
- */
-export function calculatePointStatistics(
-  playerResults: PlayerResult[]
-): PointStatistics {
-  // 見学者を除外、かつscore !== null && score !== 0のみ対象（防御的プログラミング）
-  const activeResults = playerResults.filter(pr =>
-    !pr.isSpectator && pr.score !== null && pr.score !== 0
-  )
-
+  // ポイント統計用
   let plusPoints = 0
   let minusPoints = 0
 
-  activeResults.forEach(pr => {
-    const score = pr.score!  // filterで null と 0 は除外済み
-    if (score > 0) {
-      plusPoints += score
-    } else {
-      minusPoints += score // 負の値
-    }
-  })
-
-  return {
-    plusPoints,
-    minusPoints,
-    pointBalance: plusPoints + minusPoints
-  }
-}
-
-/**
- * チップ統計を計算
- */
-export function calculateChipStatistics(
-  playerResults: PlayerResult[]
-): ChipStatistics {
+  // チップ統計用
   let plusChips = 0
   let minusChips = 0
 
-  playerResults.forEach(pr => {
-    if (pr.chips > 0) {
-      plusChips += pr.chips
-    } else if (pr.chips < 0) {
-      minusChips += pr.chips
+  // 基本統計用
+  let totalHanchans = 0
+
+  // 1回のイテレーションで全統計を計算
+  sessions.forEach(({ session, hanchans }) => {
+    if (!hanchans) return
+
+    // セッション単位の変数
+    let sessionRevenue = 0
+    let sessionChips = 0
+    let sessionParlorFee = 0
+    let chipsInitialized = false
+
+    hanchans.forEach(hanchan => {
+      const userResult = hanchan.players.find(p => p.userId === targetUserId)
+
+      // 見学者・未入力を除外
+      if (!userResult || userResult.isSpectator || userResult.score === null) {
+        return
+      }
+
+      // 半荘カウント
+      totalHanchans++
+
+      // chips/parlorFeeはセッションで1回のみ取得
+      if (!chipsInitialized) {
+        sessionChips = userResult.chips || 0
+        sessionParlorFee = userResult.parlorFee || 0
+        chipsInitialized = true
+        totalParlorFee += sessionParlorFee
+      }
+
+      // 小計（score + umaPoints * umaValue）
+      const umaPoints = umaMarkToValue(userResult.umaMark)
+      const subtotal = userResult.score + umaPoints * session.umaValue
+
+      // ポイント統計: プラス/マイナスに振り分け
+      if (subtotal > 0) {
+        plusPoints += subtotal
+      } else {
+        minusPoints += subtotal
+      }
+
+      // 収支計算: レート適用してセッション収支に加算
+      const scorePayout = subtotal * session.rate
+      sessionRevenue += scorePayout
+    })
+
+    // セッション終了時の処理
+    if (chipsInitialized) {
+      // チップ統計: セッション単位でプラス/マイナスに振り分け
+      if (sessionChips >= 0) {
+        plusChips += sessionChips
+      } else {
+        minusChips += sessionChips
+      }
+
+      // 収支統計: chips/parlorFeeを加算
+      const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
+      sessionRevenue += chipsPayout
+
+      // 収支統計: セッション単位でプラス/マイナスに振り分け
+      if (sessionRevenue >= 0) {
+        totalIncome += sessionRevenue
+      } else {
+        totalExpense += sessionRevenue
+      }
     }
   })
 
+  // 基本統計の計算
+  const totalSessions = sessions.length
+  const totalBalance = totalIncome + totalExpense
+  const pointBalance = plusPoints + minusPoints
+  const chipBalance = plusChips + minusChips
+
+  const averageScorePerHanchan = totalHanchans > 0 ? pointBalance / totalHanchans : 0
+  const averageRevenuePerSession = totalSessions > 0 ? totalBalance / totalSessions : 0
+  const averageChipsPerSession = totalSessions > 0 ? chipBalance / totalSessions : 0
+
+  // 平均着順: mode='all'時はundefined
+  const averageRank = mode !== 'all' && rankStats ? rankStats.averageRank : undefined
+
   return {
-    plusChips,
-    minusChips,
-    chipBalance: plusChips + minusChips
+    revenue: {
+      totalIncome,
+      totalExpense,
+      totalBalance,
+      totalParlorFee
+    },
+    point: {
+      plusPoints,
+      minusPoints,
+      pointBalance
+    },
+    chip: {
+      plusChips,
+      minusChips,
+      chipBalance
+    },
+    basic: {
+      totalSessions,
+      totalHanchans,
+      averageScorePerHanchan,
+      averageRevenuePerSession,
+      averageRank,
+      averageChipsPerSession
+    }
   }
 }
 

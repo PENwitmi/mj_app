@@ -11,9 +11,9 @@ import {
   filterSessionsByPeriod,
   filterSessionsByMode,
   calculateRankStatistics,
-  calculateRecordStatistics
+  calculateRecordStatistics,
+  calculateAllStatistics
 } from '@/lib/db-utils'
-import { umaMarkToValue } from '@/lib/uma-utils'
 import { logger } from '@/lib/logger'
 
 interface AnalysisTabProps {
@@ -84,198 +84,64 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
     return allHanchans
   }, [filteredSessions])
 
-  // 各統計を個別に計算
+  // 着順統計（calculateAllStatisticsで使用するため先に計算）
   const rankStats = useMemo(() => {
     if (selectedMode === 'all') return undefined
     if (hanchans.length === 0) return undefined
     return calculateRankStatistics(hanchans, selectedUserId, selectedMode)
   }, [hanchans, selectedUserId, selectedMode])
 
-  const revenueStats = useMemo(() => {
+  // 統合統計計算（Issue #11: 4回のループ → 1回に最適化）
+  const allStats = useMemo(() => {
     if (filteredSessions.length === 0) return null
+    const stats = calculateAllStatistics(filteredSessions, selectedUserId, selectedMode, rankStats)
 
-    let totalIncome = 0
-    let totalExpense = 0
-    let accumulatedParlorFee = 0  // 全セッションの場代合計
-
-    // セッション単位で収支を集計（selectedUserIdベース）
-    filteredSessions.forEach(({ session, hanchans }) => {
-      let sessionRevenue = 0  // セッション収支
-      let sessionChips = 0
-      let sessionParlorFee = 0
-      let chipsInitialized = false
-
-      if (hanchans) {
-        // Phase 1: 各半荘のスコア収支を計算
-        hanchans.forEach(hanchan => {
-          const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
-
-          // 見学者・未入力を除外（score === 0 は集計対象）
-          if (!userResult || userResult.isSpectator || userResult.score === null) {
-            return
-          }
-
-          // chips/parlorFeeはセッションで1回のみ取得
-          if (!chipsInitialized) {
-            sessionChips = userResult.chips || 0
-            sessionParlorFee = userResult.parlorFee || 0
-            chipsInitialized = true
-            accumulatedParlorFee += sessionParlorFee  // 場代を累積
-          }
-
-          // 小計（score + umaPoints * umaValue）
-          const umaPoints = umaMarkToValue(userResult.umaMark)
-          const subtotal = userResult.score + umaPoints * session.umaValue
-
-          // レート適用してセッション収支に加算
-          const scorePayout = subtotal * session.rate
-          sessionRevenue += scorePayout
-        })
-
-        // Phase 2: セッション終了時にchips/parlorFeeを加算
-        if (chipsInitialized) {
-          const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
-          sessionRevenue += chipsPayout
-        }
-
-        // セッション単位でプラス/マイナス振り分け
-        if (sessionRevenue >= 0) {
-          totalIncome += sessionRevenue
-        } else {
-          totalExpense += sessionRevenue
-        }
-      }
+    // Issue #11 検証用ログ: 統合関数による1回のイテレーションで全統計が正しく計算されていることを確認
+    console.group('📊 [Issue #11] 統合統計計算結果')
+    console.log('入力:', {
+      セッション数: filteredSessions.length,
+      対象ユーザー: selectedUserId,
+      モード: selectedMode
     })
-
-    return {
-      totalIncome,
-      totalExpense,
-      totalParlorFee: accumulatedParlorFee,  // UI表示用
-      totalBalance: totalIncome + totalExpense
-    }
-  }, [filteredSessions, selectedUserId])  // ✅ selectedUserIdを依存配列に追加
-
-  const pointStats = useMemo(() => {
-    if (filteredSessions.length === 0) return null
-
-    let plusPoints = 0
-    let minusPoints = 0
-
-    // 各セッションの各半荘からselectedUserIdのポイント（小計）を計算
-    filteredSessions.forEach(({ session, hanchans }) => {
-      if (hanchans) {
-        hanchans.forEach(hanchan => {
-          const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
-          // 見学者・未入力を除外（score === 0 は集計対象）
-          if (userResult && !userResult.isSpectator && userResult.score !== null) {
-            // 小計 = score + umaPoints * umaValue
-            const umaPoints = umaMarkToValue(userResult.umaMark)
-            const subtotal = userResult.score + umaPoints * session.umaValue
-
-            // プラス/マイナスに振り分け
-            if (subtotal > 0) {
-              plusPoints += subtotal
-            } else {
-              minusPoints += subtotal  // 負の値
-            }
-          }
-        })
-      }
+    console.log('💰 収支統計:', {
+      'プラス収支合計': `+${stats.revenue.totalIncome}pt`,
+      'マイナス収支合計': `${stats.revenue.totalExpense}pt`,
+      '総収支': `${stats.revenue.totalBalance >= 0 ? '+' : ''}${stats.revenue.totalBalance}pt`,
+      '場代合計': `${stats.revenue.totalParlorFee}pt`
     })
-
-    return {
-      plusPoints,
-      minusPoints,
-      pointBalance: plusPoints + minusPoints
-    }
-  }, [filteredSessions, selectedUserId])
-
-  const chipStats = useMemo(() => {
-    if (filteredSessions.length === 0) return null
-
-    let plusChips = 0
-    let minusChips = 0
-
-    // セッション単位でチップを集計（selectedUserIdベース）
-    filteredSessions.forEach(({ hanchans }) => {
-      if (hanchans && hanchans.length > 0) {
-        let sessionChips = 0
-        let chipsFound = false
-
-        // 最初の有効半荘からチップを取得（1回のみ）
-        for (const hanchan of hanchans) {
-          const userResult = hanchan.players.find((p: PlayerResult) => p.userId === selectedUserId)
-
-          // 見学者・未入力を除外（score === 0 は集計対象）
-          if (userResult && !userResult.isSpectator && userResult.score !== null) {
-            sessionChips = userResult.chips || 0
-            chipsFound = true
-            break  // 1回のみ
-          }
-        }
-
-        // セッション単位で振り分け
-        if (chipsFound) {
-          if (sessionChips >= 0) {
-            plusChips += sessionChips
-          } else {
-            minusChips += sessionChips
-          }
-        }
-      }
+    console.log('📈 ポイント統計:', {
+      'プラスポイント': `+${stats.point.plusPoints}点`,
+      'マイナスポイント': `${stats.point.minusPoints}点`,
+      '総ポイント': `${stats.point.pointBalance >= 0 ? '+' : ''}${stats.point.pointBalance}点`
     })
+    console.log('🎰 チップ統計:', {
+      'プラスチップ': `+${stats.chip.plusChips}枚`,
+      'マイナスチップ': `${stats.chip.minusChips}枚`,
+      '総チップ': `${stats.chip.chipBalance >= 0 ? '+' : ''}${stats.chip.chipBalance}枚`
+    })
+    console.log('📌 基本統計:', {
+      '総セッション数': `${stats.basic.totalSessions}回`,
+      '総半荘数': `${stats.basic.totalHanchans}半荘`,
+      '平均スコア/半荘': `${stats.basic.averageScorePerHanchan >= 0 ? '+' : ''}${Math.round(stats.basic.averageScorePerHanchan)}点`,
+      '平均収支/セッション': `${stats.basic.averageRevenuePerSession >= 0 ? '+' : ''}${Math.round(stats.basic.averageRevenuePerSession)}pt`,
+      '平均チップ/セッション': `${stats.basic.averageChipsPerSession >= 0 ? '+' : ''}${stats.basic.averageChipsPerSession.toFixed(2)}枚`,
+      '平均着順': stats.basic.averageRank !== undefined ? `${stats.basic.averageRank.toFixed(2)}位` : '(全体モード)'
+    })
+    console.log('✅ 計算検証:', {
+      '収支整合性': stats.revenue.totalIncome + stats.revenue.totalExpense === stats.revenue.totalBalance ? 'OK' : 'NG',
+      'ポイント整合性': stats.point.plusPoints + stats.point.minusPoints === stats.point.pointBalance ? 'OK' : 'NG',
+      'チップ整合性': stats.chip.plusChips + stats.chip.minusChips === stats.chip.chipBalance ? 'OK' : 'NG'
+    })
+    console.groupEnd()
 
-    return {
-      plusChips,
-      minusChips,
-      chipBalance: plusChips + minusChips
-    }
-  }, [filteredSessions, selectedUserId])  // ✅ selectedUserIdを依存配列に追加
+    return stats
+  }, [filteredSessions, selectedUserId, selectedMode, rankStats])
 
-  // 基本成績統計（Issue #4）
-  // TODO: 将来的にsrc/lib/db/analysis.tsに移行すべき統計計算ロジック
-  // 現在はrevenueStats, pointStats, chipStatsも同様にここで計算している
-  // Issue追跡: #11（統計計算ロジックのリファクタリング）
-  const basicStats = useMemo(() => {
-    if (filteredSessions.length === 0) return null
-
-    const totalSessions = filteredSessions.length
-    const totalHanchans = hanchans.filter(h =>
-      h.players.some(p => !p.isSpectator)
-    ).length
-
-    // 平均スコア/半荘 = 総ポイント ÷ 総半荘数
-    const totalPoints = pointStats?.pointBalance ?? 0
-    const averageScorePerHanchan = totalHanchans > 0
-      ? totalPoints / totalHanchans
-      : 0
-
-    // 平均収支/セッション = 総収支 ÷ セッション数
-    const totalRevenue = revenueStats?.totalBalance ?? 0
-    const averageRevenuePerSession = totalSessions > 0
-      ? totalRevenue / totalSessions
-      : 0
-
-    // 平均着順: selectedMode='all'時はundefined（3人打ちと4人打ち混在で計算不可）
-    const averageRank = selectedMode !== 'all' && rankStats
-      ? rankStats.averageRank
-      : undefined
-
-    // 平均チップ/セッション = 総チップ ÷ セッション数
-    const totalChips = chipStats?.chipBalance ?? 0
-    const averageChipsPerSession = totalSessions > 0
-      ? totalChips / totalSessions
-      : 0
-
-    return {
-      totalSessions,
-      totalHanchans,
-      averageScorePerHanchan,
-      averageRevenuePerSession,
-      averageRank,
-      averageChipsPerSession
-    }
-  }, [filteredSessions, hanchans, revenueStats, pointStats, rankStats, chipStats, selectedMode])
+  // 個別統計へのアクセス用（既存JSXとの互換性のため）
+  const revenueStats = allStats?.revenue ?? null
+  const pointStats = allStats?.point ?? null
+  const chipStats = allStats?.chip ?? null
+  const basicStats = allStats?.basic ?? null
 
   // 記録統計（Issue #5）
   const recordStats = useMemo(() => {

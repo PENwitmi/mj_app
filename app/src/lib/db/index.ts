@@ -50,10 +50,8 @@ export {
 // 分析統計
 export {
   calculateRankStatistics,
-  calculateRevenueStatistics,
-  calculatePointStatistics,
-  calculateChipStatistics,
   calculateRecordStatistics,
+  calculateAllStatistics,
   filterSessionsByPeriod,
   filterSessionsByMode
 } from './analysis';
@@ -65,5 +63,9 @@ export type {
   PointStatistics,
   ChipStatistics,
   RecordStatistics,
-  AnalysisStatistics
+  AnalysisStatistics,
+  ExtendedRevenueStatistics,
+  BasicStatistics,
+  AllStatistics,
+  FilteredSession
 } from './analysis';
