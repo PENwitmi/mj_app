@@ -9,6 +9,7 @@ import { AnalysisTab } from '@/components/tabs/AnalysisTab'
 import { SettingsTab } from '@/components/tabs/SettingsTab'
 // import { TestTab } from '@/components/tabs/TestTab'
 import { useUsers } from '@/hooks/useUsers'
+import { useTemplates } from '@/hooks/useTemplates'
 
 function App() {
   const [loading, setLoading] = useState(true)
@@ -20,6 +21,9 @@ function App() {
 
   // ユーザー管理を一箇所で行い、全タブで共有
   const { mainUser, activeUsers, archivedUsers, addNewUser, editUser, archiveUser, restoreUser, refreshUsers } = useUsers()
+
+  // テンプレート管理
+  const { templates, addTemplate, editTemplate, removeTemplate } = useTemplates()
 
   // タブがアクティブになったら100ms遅延してmountedTabsに追加
   useEffect(() => {
@@ -120,6 +124,10 @@ function App() {
                   editUser={editUser}
                   archiveUser={archiveUser}
                   restoreUser={restoreUser}
+                  templates={templates}
+                  addTemplate={addTemplate}
+                  editTemplate={editTemplate}
+                  removeTemplate={removeTemplate}
                 />
               )}
             </div>

@@ -25,7 +25,9 @@ import {
 } from '@/components/ui/accordion'
 import { NewPlayerDialog } from '@/components/NewPlayerDialog'
 import { MigrationTool } from '@/components/MigrationTool'
-import type { UmaRule, User } from '@/lib/db-utils'
+import { TemplateManagementSection } from '@/components/TemplateManagementSection'
+import type { UmaRule, User, Template } from '@/lib/db-utils'
+import type { TemplateFormData } from '@/lib/db-utils'
 import { getDefaultUmaRule, setDefaultUmaRule } from '@/lib/utils'
 
 interface SettingsTabProps {
@@ -36,9 +38,26 @@ interface SettingsTabProps {
   editUser: (userId: string, name: string) => Promise<User>
   archiveUser: (userId: string) => Promise<void>
   restoreUser: (userId: string) => Promise<void>
+  // テンプレート関連
+  templates: Template[]
+  addTemplate: (data: TemplateFormData) => Promise<Template>
+  editTemplate: (id: string, data: TemplateFormData) => Promise<Template>
+  removeTemplate: (id: string) => Promise<void>
 }
 
-export function SettingsTab({ mainUser, activeUsers, archivedUsers, addNewUser, editUser, archiveUser, restoreUser }: SettingsTabProps) {
+export function SettingsTab({
+  mainUser,
+  activeUsers,
+  archivedUsers,
+  addNewUser,
+  editUser,
+  archiveUser,
+  restoreUser,
+  templates,
+  addTemplate,
+  editTemplate,
+  removeTemplate,
+}: SettingsTabProps) {
   const [defaultUmaRule, setDefaultUmaRuleState] = useState<UmaRule>('standard')
   const [userManagementOpen, setUserManagementOpen] = useState(false)
   const [newPlayerDialogOpen, setNewPlayerDialogOpen] = useState(false)
@@ -129,6 +148,15 @@ export function SettingsTab({ mainUser, activeUsers, archivedUsers, addNewUser, 
               登録ユーザーの追加・編集・削除
             </p>
           </div>
+
+          {/* テンプレート管理セクション */}
+          <TemplateManagementSection
+            templates={templates}
+            users={[...(mainUser ? [mainUser] : []), ...activeUsers]}
+            onCreateTemplate={addTemplate}
+            onUpdateTemplate={editTemplate}
+            onDeleteTemplate={removeTemplate}
+          />
 
           <div className="border rounded-lg p-4 space-y-3">
             <h3 className="font-semibold">🎲 デフォルトウマルール</h3>

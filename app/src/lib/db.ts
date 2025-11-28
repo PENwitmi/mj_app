@@ -77,6 +77,19 @@ export interface PlayerResult {
   createdAt: Date;           // 作成日時
 }
 
+export interface Template {
+  id: string;                // UUID
+  name: string;              // テンプレート名（「金曜麻雀会」等）
+  gameMode: GameMode;        // '4-player' | '3-player'
+  playerIds: string[];       // メンバーのユーザーID配列（順序保持）
+  rate: number;              // レート（デフォルト: 30）
+  umaValue: number;          // ウマ値（デフォルト: 10）
+  chipRate: number;          // チップレート（デフォルト: 100）
+  umaRule: UmaRule;          // 'standard' | 'second-minus'
+  createdAt: Date;           // 作成日時
+  updatedAt: Date;           // 更新日時
+}
+
 // ========================================
 // Dexie Database Declaration
 // ========================================
@@ -86,6 +99,7 @@ export const db = new Dexie('MahjongDB') as Dexie & {
   sessions: EntityTable<Session, 'id'>;
   hanchans: EntityTable<Hanchan, 'id'>;
   playerResults: EntityTable<PlayerResult, 'id'>;
+  templates: EntityTable<Template, 'id'>;
 };
 
 // Version 1: Initial schema
@@ -102,6 +116,15 @@ db.version(2).stores({
   sessions: 'id, date, mode, createdAt, updatedAt',
   hanchans: 'id, sessionId, hanchanNumber, createdAt',
   playerResults: 'id, hanchanId, userId, playerName, createdAt'
+});
+
+// Version 3: Added templates table for template management (Issue #7)
+db.version(3).stores({
+  users: 'id, name, createdAt',
+  sessions: 'id, date, mode, createdAt, updatedAt',
+  hanchans: 'id, sessionId, hanchanNumber, createdAt',
+  playerResults: 'id, hanchanId, userId, playerName, createdAt',
+  templates: 'id, name, createdAt, updatedAt'
 });
 
 // ========================================
@@ -158,4 +181,5 @@ export async function clearAllData(): Promise<void> {
   await db.sessions.clear();
   await db.hanchans.clear();
   await db.playerResults.clear();
+  await db.templates.clear();
 }

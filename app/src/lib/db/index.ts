@@ -69,3 +69,14 @@ export type {
   AllStatistics,
   FilteredSession
 } from './analysis';
+
+// テンプレート管理
+export {
+  createTemplate,
+  getAllTemplates,
+  getTemplate,
+  updateTemplate,
+  deleteTemplate,
+  createTemplateFromSession
+} from './templates';
+export type { TemplateFormData } from './templates';

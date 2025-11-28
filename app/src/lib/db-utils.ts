@@ -6,7 +6,7 @@
 
 // db.ts からの型定義とインスタンスを re-export（既存コードとの互換性のため）
 export { db } from './db';
-export type { User, Session, Hanchan, PlayerResult, UmaMark, UmaRule, GameMode } from './db';
+export type { User, Session, Hanchan, PlayerResult, UmaMark, UmaRule, GameMode, Template } from './db';
 
 // 新しいモジュール構造からすべてをre-export
 export * from './db/index';
