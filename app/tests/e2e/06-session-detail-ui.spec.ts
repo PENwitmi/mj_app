@@ -311,5 +311,23 @@ test.describe('Session Detail Dialog UI (Issue #15)', () => {
     // テンプレートボタンが表示される
     const templateButton = page.getByRole('button', { name: uniqueTemplateName });
     await expect(templateButton).toBeVisible({ timeout: 5000 });
+
+    // ===================================
+    // Step 4: 設定タブでもテンプレート確認
+    // ===================================
+    await page.getByRole('tab', { name: '設定' }).click();
+    await page.waitForTimeout(500);
+
+    // テンプレート管理セクションの件数が更新されている
+    await expect(page.locator('text=1件')).toBeVisible({ timeout: 5000 });
+
+    // テンプレート管理をクリックしてダイアログを開く
+    await page.getByRole('heading', { name: /テンプレート管理/ }).click();
+    await page.waitForTimeout(500);
+
+    // テンプレート管理ダイアログ内でテンプレート名が表示される
+    const templateManagementDialog = page.locator('[role="dialog"]');
+    await expect(templateManagementDialog).toBeVisible({ timeout: 5000 });
+    await expect(templateManagementDialog.locator(`text=${uniqueTemplateName}`)).toBeVisible({ timeout: 5000 });
   });
 });
