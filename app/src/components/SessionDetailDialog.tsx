@@ -249,6 +249,8 @@ export function SessionDetailDialog({
         sessionData.hanchans,
         templateName.trim()
       )
+      // useTemplatesフックに通知してリフレッシュ
+      window.dispatchEvent(new Event('template-created'))
       toast.success('テンプレートを保存しました')
       setTemplateDialogOpen(false)
       setTemplateName('')

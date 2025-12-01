@@ -35,6 +35,15 @@ export function useTemplates() {
 
   useEffect(() => {
     loadTemplates()
+
+    // 他のコンポーネントからのテンプレート追加を検知してリフレッシュ
+    const handleTemplateCreated = () => {
+      loadTemplates()
+    }
+    window.addEventListener('template-created', handleTemplateCreated)
+    return () => {
+      window.removeEventListener('template-created', handleTemplateCreated)
+    }
   }, [loadTemplates])
 
   /**

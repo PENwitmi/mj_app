@@ -243,7 +243,7 @@ test.describe('Session Detail Dialog UI (Issue #15)', () => {
     await expect(dialog).toBeVisible();
 
     // ===================================
-    // Step 3: アクションボタンがタブの上に配置されていることを確認
+    // Step 3: アクションボタンがタブコンテンツの下に配置されていることを確認
     // ===================================
     const copyButton = dialog.getByRole('button', { name: /コピー/ });
     const saveTemplateButton = dialog.getByRole('button', { name: /テンプレ保存/ });
@@ -253,7 +253,7 @@ test.describe('Session Detail Dialog UI (Issue #15)', () => {
     await expect(copyButton).toBeVisible();
     await expect(saveTemplateButton).toBeVisible();
 
-    // アクションボタンがタブリストより上にあることを確認（Y座標比較）
+    // アクションボタンがタブリストより下にあることを確認（Y座標比較）
     const copyButtonBox = await copyButton.boundingBox();
     const tabListBox = await tabList.boundingBox();
 
@@ -261,8 +261,55 @@ test.describe('Session Detail Dialog UI (Issue #15)', () => {
     expect(tabListBox).not.toBeNull();
 
     if (copyButtonBox && tabListBox) {
-      // コピーボタンのY座標がタブリストより小さい（上にある）
-      expect(copyButtonBox.y).toBeLessThan(tabListBox.y);
+      // コピーボタンのY座標がタブリストより大きい（下にある）
+      expect(copyButtonBox.y).toBeGreaterThan(tabListBox.y);
     }
+  });
+
+  test('TC-E2E-016: テンプレート保存→新規入力タブで表示確認', async ({ page }) => {
+    // ===================================
+    // Step 1: セッション作成
+    // ===================================
+    const today = await createTestSession(page);
+
+    // ===================================
+    // Step 2: セッション詳細からテンプレート保存
+    // ===================================
+    const sessionCard = page.locator('[class*="border"]').filter({ hasText: today }).first();
+    await sessionCard.click();
+
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible();
+
+    const saveTemplateButton = dialog.getByRole('button', { name: /テンプレ保存/ });
+    await saveTemplateButton.click();
+
+    // テンプレート名入力
+    await page.waitForTimeout(300);
+    const templateDialog = page.locator('[role="dialog"]').last();
+    const templateNameInput = templateDialog.locator('input');
+    const uniqueTemplateName = `E2E検証テンプレ_${Date.now()}`;
+    await templateNameInput.clear();
+    await templateNameInput.fill(uniqueTemplateName);
+
+    // 保存
+    const confirmButton = templateDialog.getByRole('button', { name: '保存' });
+    await confirmButton.click();
+    await expect(page.locator('text=テンプレートを保存しました')).toBeVisible({ timeout: 5000 });
+
+    // ダイアログを閉じる
+    await page.waitForTimeout(500);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+
+    // ===================================
+    // Step 3: 新規入力タブに移動してテンプレート確認
+    // ===================================
+    await page.getByRole('tab', { name: '新規入力' }).click();
+    await page.waitForTimeout(500);
+
+    // テンプレートボタンが表示される
+    const templateButton = page.getByRole('button', { name: uniqueTemplateName });
+    await expect(templateButton).toBeVisible({ timeout: 5000 });
   });
 });
