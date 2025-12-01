@@ -325,21 +325,11 @@ export function SessionDetailDialog({
         {!isEditMode ? (
           <>
             {/* 閲覧モード: メモ編集エリア */}
-            <div className="px-4 py-2 border-b">
+            <div className="px-4 py-2">
               <SessionMemoInput
                 value={session.memo || ''}
                 onSave={handleMemoSave}
               />
-            </div>
-
-            {/* 閲覧モード: アクションボタン */}
-            <div className="flex gap-2 px-4 py-2 border-b">
-              <Button variant="outline" size="sm" className="flex-1" onClick={handleCopyResult}>
-                📋 コピー
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1" onClick={handleSaveTemplate}>
-                📝 テンプレ保存
-              </Button>
             </div>
 
             {/* 閲覧モード: タブ切り替え */}
@@ -535,6 +525,16 @@ export function SessionDetailDialog({
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {/* アクションボタン（タブコンテンツ下部） */}
+            <div className="flex gap-2 px-4 py-3">
+              <Button variant="outline" size="sm" className="flex-1" onClick={handleCopyResult}>
+                📋 コピー
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={handleSaveTemplate}>
+                📝 テンプレ保存
+              </Button>
+            </div>
           </>
         ) : (
           <>
