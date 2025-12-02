@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
   getSessionWithDetails,
@@ -24,6 +25,9 @@ import { ScoreInputTable } from '@/components/input/ScoreInputTable'
 import { TotalsPanel, calculatePlayerTotals } from '@/components/input/TotalsPanel'
 import { SessionMemoInput } from '@/components/SessionMemoInput'
 import { logger } from '@/lib/logger'
+import { formatSessionForClipboard, copyToClipboard } from '@/lib/share-utils'
+import { createTemplateFromSession } from '@/lib/db-utils'
+import { Input } from '@/components/ui/input'
 
 // getSessionWithDetailsの戻り値の型
 interface SessionWithDetails {
@@ -57,6 +61,11 @@ export function SessionDetailDialog({
   const [editableHanchans, setEditableHanchans] = useState<UIHanchan[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  // テンプレート保存用State
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false)
 
   useEffect(() => {
     if (!sessionId || !open) {
@@ -191,6 +200,67 @@ export function SessionDetailDialog({
     setSessionData(updatedData)
   }
 
+  // コピー機能（Issue #2）
+  const handleCopyResult = async () => {
+    if (!sessionData) return
+
+    const { session, hanchans } = sessionData
+    const names = hanchans[0]?.players.map(p => p.playerName) || []
+
+    // プレイヤーごとの最終収支を計算
+    const playerTotals = names.map((name, idx) => {
+      const totals = calculatePlayerTotals(
+        idx,
+        hanchans as any,
+        { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+      )
+      return { playerName: name, finalPayout: totals.finalPayout }
+    })
+
+    const text = formatSessionForClipboard(session, playerTotals)
+    const success = await copyToClipboard(text)
+
+    if (success) {
+      toast.success('結果をコピーしました')
+    } else {
+      toast.error('コピーに失敗しました')
+    }
+  }
+
+  // テンプレート保存ダイアログを開く（Issue #9）
+  const handleSaveTemplate = () => {
+    if (!sessionData) return
+    // デフォルト名を設定（メモ or 日付）
+    setTemplateName(sessionData.session.memo || sessionData.session.date)
+    setTemplateDialogOpen(true)
+  }
+
+  // テンプレート保存実行
+  const handleConfirmSaveTemplate = async () => {
+    if (!sessionData || !templateName.trim()) {
+      toast.error('テンプレート名を入力してください')
+      return
+    }
+
+    setIsSavingTemplate(true)
+    try {
+      await createTemplateFromSession(
+        sessionData.session,
+        sessionData.hanchans,
+        templateName.trim()
+      )
+      // useTemplatesフックに通知してリフレッシュ
+      window.dispatchEvent(new Event('template-created'))
+      toast.success('テンプレートを保存しました')
+      setTemplateDialogOpen(false)
+      setTemplateName('')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '保存に失敗しました')
+    } finally {
+      setIsSavingTemplate(false)
+    }
+  }
+
   if (!sessionData) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -210,6 +280,7 @@ export function SessionDetailDialog({
   const playerNames = hanchans[0]?.players.map((p: PlayerResult) => p.playerName) || []
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -256,192 +327,216 @@ export function SessionDetailDialog({
         {!isEditMode ? (
           <>
             {/* 閲覧モード: メモ編集エリア */}
-            <div className="px-4 py-3 border-b">
+            <div className="px-4 py-2">
               <SessionMemoInput
                 value={session.memo || ''}
                 onSave={handleMemoSave}
               />
             </div>
 
-            {/* 閲覧モード: プレイヤー成績テーブル */}
-            <Card className="py-0">
-              <CardContent className="p-2">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-xs table-fixed">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="p-0.5 text-center w-4 text-muted-foreground text-[10px]"></th>
-                        {playerNames.map((name: string, idx: number) => (
-                          <th key={idx} className="p-1 text-center font-semibold">
-                            {name}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {/* 小計行 */}
-                      <tr className="bg-muted/50">
-                        <td className="p-0.5 font-medium text-center text-[10px] w-4">小計</td>
-                        {playerNames.map((_, playerIdx: number) => {
-                          const totals = calculatePlayerTotals(
-                            playerIdx,
-                            hanchans as any,
-                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
-                          )
-                          const sign = totals.subtotal >= 0 ? '+' : ''
-                          return (
-                            <td key={playerIdx} className="p-1 text-center">
-                              <div className="font-semibold text-sm">
-                                {sign}{totals.subtotal}
-                              </div>
-                              <div className="text-[11px] text-muted-foreground">
-                                ({sign}{totals.scoreTotal}+{totals.umaTotal * session.umaValue})
-                              </div>
-                            </td>
-                          )
-                        })}
-                      </tr>
+            {/* 閲覧モード: タブ切り替え */}
+            <Tabs defaultValue="summary" className="flex-1 flex flex-col">
+              <div className="px-4 pt-2">
+                <TabsList className="w-full grid grid-cols-2">
+                  <TabsTrigger value="summary">📊 サマリー</TabsTrigger>
+                  <TabsTrigger value="detail">🀄 半荘詳細</TabsTrigger>
+                </TabsList>
+              </div>
 
-                      {/* チップ行 */}
-                      <tr>
-                        <td className="p-0.5 font-medium text-center text-[10px] w-4">CP</td>
-                        {playerNames.map((_, playerIdx: number) => {
-                          const totals = calculatePlayerTotals(
-                            playerIdx,
-                            hanchans as any,
-                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
-                          )
-                          return (
-                            <td key={playerIdx} className="p-1 text-center">
-                              <div className="font-semibold text-base">
-                                {totals.chips}
-                              </div>
-                            </td>
-                          )
-                        })}
-                      </tr>
-
-                      {/* 収支行 */}
-                      <tr className="bg-muted/30">
-                        <td className="p-0.5 font-medium text-center text-[10px] w-4">収支</td>
-                        {playerNames.map((_, playerIdx: number) => {
-                          const totals = calculatePlayerTotals(
-                            playerIdx,
-                            hanchans as any,
-                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
-                          )
-                          const sign = totals.payout >= 0 ? '+' : ''
-                          return (
-                            <td key={playerIdx} className="p-1 text-center font-semibold">
-                              {sign}{totals.payout}
-                            </td>
-                          )
-                        })}
-                      </tr>
-
-                      {/* 場代行 */}
-                      <tr>
-                        <td className="p-0.5 font-medium text-center text-[10px] w-4">場代</td>
-                        {playerNames.map((_, playerIdx: number) => {
-                          const totals = calculatePlayerTotals(
-                            playerIdx,
-                            hanchans as any,
-                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
-                          )
-                          return (
-                            <td key={playerIdx} className="p-1 text-center">
-                              <div className="font-semibold text-base">
-                                {totals.parlorFee}
-                              </div>
-                            </td>
-                          )
-                        })}
-                      </tr>
-
-                      {/* 最終収支行 */}
-                      <tr className="bg-primary/10 border-t">
-                        <td className="p-0.5 font-bold text-center text-[10px] w-4">最終</td>
-                        {playerNames.map((_, playerIdx: number) => {
-                          const totals = calculatePlayerTotals(
-                            playerIdx,
-                            hanchans as any,
-                            { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
-                          )
-                          const sign = totals.finalPayout >= 0 ? '+' : ''
-                          const textColor =
-                            totals.finalPayout > 0
-                              ? 'text-green-600'
-                              : totals.finalPayout < 0
-                                ? 'text-red-600'
-                                : ''
-                          return (
-                            <td
-                              key={playerIdx}
-                              className={`p-1 text-center font-bold text-base ${textColor}`}
-                            >
-                              {sign}{totals.finalPayout}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 閲覧モード: 半荘テーブル */}
-            <Card className="py-0">
-              <CardContent className="p-2">
-                <div className="overflow-x-auto max-h-[calc(60vh-180px)] overflow-y-auto">
-                  <table className="w-full border-collapse text-xs table-fixed">
-                    <thead className="sticky top-0 z-10 bg-white">
-                      <tr className="border-b">
-                        <th className="p-0.5 text-center w-4 text-muted-foreground text-[10px]">#</th>
-                        {playerNames.map((name: string, idx: number) => (
-                          <th key={idx} className="p-1 text-center font-semibold">
-                            {name}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {hanchans.map((hanchan: Hanchan & { players: PlayerResult[] }) => (
-                        <tr key={hanchan.id} className="border-b hover:bg-muted/30">
-                          <td className="p-0.5 text-center text-muted-foreground font-medium">
-                            {hanchan.hanchanNumber}
-                          </td>
-                          {hanchan.players.map((player: PlayerResult, playerIdx: number) => {
-                            if (player.isSpectator) {
+              {/* サマリータブ */}
+              <TabsContent value="summary" className="flex-1 overflow-auto px-2 pb-2">
+                <Card className="py-0">
+                  <CardContent className="p-2">
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-xs table-fixed">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="p-0.5 text-center w-4 text-muted-foreground text-[10px]"></th>
+                            {playerNames.map((name: string, idx: number) => (
+                              <th key={idx} className="p-1 text-center font-semibold">
+                                {name}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* 小計行 */}
+                          <tr className="bg-muted/50">
+                            <td className="p-0.5 font-medium text-center text-[10px] w-4">小計</td>
+                            {playerNames.map((_, playerIdx: number) => {
+                              const totals = calculatePlayerTotals(
+                                playerIdx,
+                                hanchans as any,
+                                { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                              )
+                              const sign = totals.subtotal >= 0 ? '+' : ''
                               return (
-                                <td key={playerIdx} className="p-1 text-center text-muted-foreground">
-                                  見学
+                                <td key={playerIdx} className="p-1 text-center">
+                                  <div className="font-semibold text-sm">
+                                    {sign}{totals.subtotal}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground">
+                                    ({sign}{totals.scoreTotal}+{totals.umaTotal * session.umaValue})
+                                  </div>
                                 </td>
                               )
-                            }
+                            })}
+                          </tr>
 
-                            const score = player.score ?? 0
-                            const sign = score >= 0 ? '+' : ''
-                            const umaMark = player.umaMark || ''
+                          {/* チップ行 */}
+                          <tr>
+                            <td className="p-0.5 font-medium text-center text-[10px] w-4">CP</td>
+                            {playerNames.map((_, playerIdx: number) => {
+                              const totals = calculatePlayerTotals(
+                                playerIdx,
+                                hanchans as any,
+                                { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                              )
+                              return (
+                                <td key={playerIdx} className="p-1 text-center">
+                                  <div className="font-semibold text-base">
+                                    {totals.chips}
+                                  </div>
+                                </td>
+                              )
+                            })}
+                          </tr>
 
-                            return (
-                              <td key={playerIdx} className="p-1">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className={score >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                    {sign}{score}
-                                  </span>
-                                  <span className="text-muted-foreground">{umaMark}</span>
-                                </div>
+                          {/* 収支行 */}
+                          <tr className="bg-muted/30">
+                            <td className="p-0.5 font-medium text-center text-[10px] w-4">収支</td>
+                            {playerNames.map((_, playerIdx: number) => {
+                              const totals = calculatePlayerTotals(
+                                playerIdx,
+                                hanchans as any,
+                                { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                              )
+                              const sign = totals.payout >= 0 ? '+' : ''
+                              return (
+                                <td key={playerIdx} className="p-1 text-center font-semibold">
+                                  {sign}{totals.payout}
+                                </td>
+                              )
+                            })}
+                          </tr>
+
+                          {/* 場代行 */}
+                          <tr>
+                            <td className="p-0.5 font-medium text-center text-[10px] w-4">場代</td>
+                            {playerNames.map((_, playerIdx: number) => {
+                              const totals = calculatePlayerTotals(
+                                playerIdx,
+                                hanchans as any,
+                                { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                              )
+                              return (
+                                <td key={playerIdx} className="p-1 text-center">
+                                  <div className="font-semibold text-base">
+                                    {totals.parlorFee}
+                                  </div>
+                                </td>
+                              )
+                            })}
+                          </tr>
+
+                          {/* 最終収支行 */}
+                          <tr className="bg-primary/10 border-t">
+                            <td className="p-0.5 font-bold text-center text-[10px] w-4">最終</td>
+                            {playerNames.map((_, playerIdx: number) => {
+                              const totals = calculatePlayerTotals(
+                                playerIdx,
+                                hanchans as any,
+                                { date: session.date, rate: session.rate, umaValue: session.umaValue, chipRate: session.chipRate, umaRule: session.umaRule }
+                              )
+                              const sign = totals.finalPayout >= 0 ? '+' : ''
+                              const textColor =
+                                totals.finalPayout > 0
+                                  ? 'text-green-600'
+                                  : totals.finalPayout < 0
+                                    ? 'text-red-600'
+                                    : ''
+                              return (
+                                <td
+                                  key={playerIdx}
+                                  className={`p-1 text-center font-bold text-base ${textColor}`}
+                                >
+                                  {sign}{totals.finalPayout}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* 半荘詳細タブ */}
+              <TabsContent value="detail" className="flex-1 overflow-auto px-2 pb-2">
+                <Card className="py-0">
+                  <CardContent className="p-2">
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-xs table-fixed">
+                        <thead className="sticky top-0 z-10 bg-white">
+                          <tr className="border-b">
+                            <th className="p-0.5 text-center w-4 text-muted-foreground text-[10px]">#</th>
+                            {playerNames.map((name: string, idx: number) => (
+                              <th key={idx} className="p-1 text-center font-semibold">
+                                {name}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {hanchans.map((hanchan: Hanchan & { players: PlayerResult[] }) => (
+                            <tr key={hanchan.id} className="border-b hover:bg-muted/30">
+                              <td className="p-0.5 text-center text-muted-foreground font-medium">
+                                {hanchan.hanchanNumber}
                               </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                              {hanchan.players.map((player: PlayerResult, playerIdx: number) => {
+                                if (player.isSpectator) {
+                                  return (
+                                    <td key={playerIdx} className="p-1 text-center text-muted-foreground">
+                                      見学
+                                    </td>
+                                  )
+                                }
+
+                                const score = player.score ?? 0
+                                const sign = score >= 0 ? '+' : ''
+                                const umaMark = player.umaMark || ''
+
+                                return (
+                                  <td key={playerIdx} className="p-1">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className={score >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                        {sign}{score}
+                                      </span>
+                                      <span className="text-muted-foreground">{umaMark}</span>
+                                    </div>
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            {/* アクションボタン（タブコンテンツ下部） */}
+            <div className="flex gap-2 px-4 py-3">
+              <Button variant="outline" size="sm" className="flex-1" onClick={handleCopyResult}>
+                📋 コピー
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={handleSaveTemplate}>
+                📝 テンプレ保存
+              </Button>
+            </div>
           </>
         ) : (
           <>
@@ -529,5 +624,44 @@ export function SessionDetailDialog({
         )}
       </DialogContent>
     </Dialog>
+
+    {/* テンプレート保存ダイアログ */}
+    <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle>テンプレートとして保存</DialogTitle>
+          <DialogDescription>
+            このセッションの設定をテンプレートとして保存します
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <label className="text-sm font-medium">テンプレート名</label>
+          <Input
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+            placeholder="例: 金曜麻雀会"
+            maxLength={50}
+            className="mt-1"
+            autoFocus
+          />
+          {sessionData && (
+            <p className="text-xs text-muted-foreground mt-2">
+              保存される設定: {sessionData.session.mode === '4-player' ? '4人打ち' : '3人打ち'} •
+              R{sessionData.session.rate}/U{sessionData.session.umaValue}/C{sessionData.session.chipRate} •
+              メンバー{sessionData.hanchans[0]?.players.length || 0}名
+            </p>
+          )}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setTemplateDialogOpen(false)}>
+            キャンセル
+          </Button>
+          <Button onClick={handleConfirmSaveTemplate} disabled={isSavingTemplate}>
+            {isSavingTemplate ? '保存中...' : '保存'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

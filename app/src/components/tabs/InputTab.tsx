@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import type { GameMode, User } from '@/lib/db-utils'
+import type { GameMode, User, Template } from '@/lib/db-utils'
+import { useTemplates } from '@/hooks/useTemplates'
 import { getDefaultUmaRule, type UmaRuleChangedEventDetail } from '@/lib/utils'
 import { saveSessionWithSummary } from '@/lib/session-utils'
 import type { SessionSaveData } from '@/lib/db-utils'
@@ -31,6 +32,9 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null)
   const [settings, setSettings] = useState<SessionSettings>(DEFAULT_SETTINGS)
   const [hanchans, setHanchans] = useState<Hanchan[]>([])
+
+  // テンプレート一覧を取得
+  const { templates } = useTemplates()
 
   // ウマルール変更のリアルタイム反映
   useEffect(() => {
@@ -110,6 +114,58 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
         ...createInitialPlayerResult(name),
         userId: idx === 0 && mainUser ? mainUser.id : null,
       })),
+      autoCalculated: false,
+    }))
+
+    setHanchans(initialHanchans)
+  }
+
+  // テンプレート選択時のハンドラー
+  const handleTemplateSelect = (template: Template) => {
+    // 1. モード設定
+    setSelectedMode(template.gameMode)
+
+    // 2. セッション設定を適用（日付は現在日）
+    setSettings({
+      date: new Date().toISOString().split('T')[0],
+      rate: template.rate,
+      umaValue: template.umaValue,
+      chipRate: template.chipRate,
+      umaRule: template.umaRule,
+    })
+
+    // 3. プレイヤー構成を適用
+    const playerCount = template.gameMode === '4-player' ? 4 : 3
+
+    // テンプレートのプレイヤーIDからユーザー情報を取得
+    const allUsers = mainUser ? [mainUser, ...users] : users
+    const templatePlayers = template.playerIds.map(playerId => {
+      const user = allUsers.find(u => u.id === playerId)
+      return user ? { userId: user.id, playerName: user.name } : null
+    }).filter((p): p is { userId: string; playerName: string } => p !== null)
+
+    // 不足分はデフォルト名で埋める
+    const defaultNames = template.gameMode === '4-player'
+      ? ['プレイヤー1', 'プレイヤー2', 'プレイヤー3', 'プレイヤー4']
+      : ['プレイヤー1', 'プレイヤー2', 'プレイヤー3']
+
+    // 4. 初期半荘データを作成（3半荘）
+    const initialHanchans: Hanchan[] = [1, 2, 3].map((num) => ({
+      hanchanNumber: num,
+      players: Array.from({ length: playerCount }, (_, idx) => {
+        const templatePlayer = templatePlayers[idx]
+        if (templatePlayer) {
+          return {
+            ...createInitialPlayerResult(templatePlayer.playerName),
+            userId: templatePlayer.userId,
+          }
+        } else {
+          return {
+            ...createInitialPlayerResult(defaultNames[idx]),
+            userId: null,
+          }
+        }
+      }),
       autoCalculated: false,
     }))
 
@@ -325,6 +381,14 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
 
   // モード未選択時は選択画面を表示
   if (!selectedMode) {
+    // テンプレートのプレイヤー名を取得するヘルパー
+    const getTemplatePlayerNames = (template: Template): string[] => {
+      const allUsers = mainUser ? [mainUser, ...users] : users
+      return template.playerIds
+        .map(id => allUsers.find(u => u.id === id)?.name)
+        .filter((name): name is string => !!name)
+    }
+
     return (
       <div className="space-y-4">
         <Card>
@@ -346,6 +410,31 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
             >
               3人打ち麻雀
             </Button>
+
+            {/* テンプレートセクション */}
+            {templates.length > 0 && (
+              <div className="pt-4 border-t space-y-4">
+                  {templates.map(template => {
+                    const playerNames = getTemplatePlayerNames(template)
+                    const modeLabel = template.gameMode === '4-player' ? '4人打ち' : '3人打ち'
+
+                    return (
+                      <Button
+                        key={template.id}
+                        variant="outline"
+                        className="w-full h-20 text-lg flex flex-col items-center justify-center gap-0"
+                        onClick={() => handleTemplateSelect(template)}
+                      >
+                        <span>{template.name}</span>
+                        <span className="text-sm text-muted-foreground font-normal">
+                          {modeLabel}
+                          {playerNames.length > 0 && `・${playerNames.join(', ')}`}
+                        </span>
+                      </Button>
+                    )
+                  })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

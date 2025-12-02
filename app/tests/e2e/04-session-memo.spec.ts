@@ -103,10 +103,10 @@ test.describe('Session Memo Feature', () => {
     const memoTextarea = dialog.locator('textarea');
     await expect(memoTextarea).toBeVisible();
     await expect(memoTextarea).toHaveAttribute('placeholder', /役満達成！/);
-    await expect(memoTextarea).toHaveAttribute('maxLength', '200');
+    await expect(memoTextarea).toHaveAttribute('maxLength', '50');
 
     // 文字数カウンターが表示される
-    await expect(dialog.locator('text=0/200')).toBeVisible();
+    await expect(dialog.locator('text=0/50')).toBeVisible();
 
     // ===================================
     // Step 4: メモ入力
@@ -116,7 +116,7 @@ test.describe('Session Memo Feature', () => {
     await memoTextarea.fill(testMemo);
 
     // 文字数カウンター更新確認
-    await expect(dialog.locator(`text=${testMemo.length}/200`)).toBeVisible();
+    await expect(dialog.locator(`text=${testMemo.length}/50`)).toBeVisible();
 
     // フォーカスを外す（onBlur保存）
     await memoTextarea.blur();
@@ -147,7 +147,7 @@ test.describe('Session Memo Feature', () => {
 
     // メモが保持されている
     await expect(memoTextarea).toHaveValue(testMemo);
-    await expect(dialog.locator(`text=${testMemo.length}/200`)).toBeVisible();
+    await expect(dialog.locator(`text=${testMemo.length}/50`)).toBeVisible();
   });
 
   test('TC-E2E-009: セッションメモの編集', async ({ page }) => {
@@ -201,7 +201,7 @@ test.describe('Session Memo Feature', () => {
     await memoTextarea.fill(updatedMemo);
 
     // 文字数カウンター更新確認
-    await expect(dialog.locator(`text=${updatedMemo.length}/200`)).toBeVisible();
+    await expect(dialog.locator(`text=${updatedMemo.length}/50`)).toBeVisible();
 
     // 保存
     await memoTextarea.blur();
@@ -273,7 +273,7 @@ test.describe('Session Memo Feature', () => {
     await memoTextarea.clear();
 
     // 文字数カウンターが0になる
-    await expect(dialog.locator('text=0/200')).toBeVisible();
+    await expect(dialog.locator('text=0/50')).toBeVisible();
 
     // 保存
     await memoTextarea.blur();
@@ -301,7 +301,7 @@ test.describe('Session Memo Feature', () => {
 
     // メモが空
     await expect(memoTextarea).toHaveValue('');
-    await expect(dialog.locator('text=0/200')).toBeVisible();
+    await expect(dialog.locator('text=0/50')).toBeVisible();
   });
 
   test('TC-E2E-011: メモ文字数制限', async ({ page }) => {
@@ -338,25 +338,25 @@ test.describe('Session Memo Feature', () => {
     await expect(dialog).toBeVisible();
 
     // ===================================
-    // Step 1: 200文字のメモ入力
+    // Step 1: 50文字のメモ入力
     // ===================================
 
     const memoTextarea = dialog.locator('textarea');
 
-    // 200文字ちょうどのメモ
-    const memo200 = 'あ'.repeat(200);
-    await memoTextarea.fill(memo200);
+    // 50文字ちょうどのメモ
+    const memo50 = 'あ'.repeat(50);
+    await memoTextarea.fill(memo50);
 
     // 文字数カウンター確認
-    await expect(dialog.locator('text=200/200')).toBeVisible();
+    await expect(dialog.locator('text=50/50')).toBeVisible();
 
     // maxLength属性の確認
-    await expect(memoTextarea).toHaveAttribute('maxLength', '200');
+    await expect(memoTextarea).toHaveAttribute('maxLength', '50');
 
-    // 201文字を入力しようとしても200文字までしか入らない
-    const memo201 = 'あ'.repeat(201);
-    await memoTextarea.fill(memo201);
-    await expect(memoTextarea).toHaveValue(memo200); // 200文字に切り詰められる
+    // 51文字を入力しようとしても50文字までしか入らない
+    const memo51 = 'あ'.repeat(51);
+    await memoTextarea.fill(memo51);
+    await expect(memoTextarea).toHaveValue(memo50); // 50文字に切り詰められる
 
     // ===================================
     // Step 2: 保存確認
@@ -366,7 +366,7 @@ test.describe('Session Memo Feature', () => {
     await expect(page.locator('text=メモを保存しました').first()).toBeVisible({ timeout: 5000 });
 
     // ===================================
-    // Step 3: 再読み込みで200文字が保持されることを確認
+    // Step 3: 再読み込みで50文字が保持されることを確認
     // ===================================
 
     await closeDialog(page);
@@ -378,8 +378,8 @@ test.describe('Session Memo Feature', () => {
     await sessionCard.click();
     await expect(dialog).toBeVisible();
 
-    await expect(memoTextarea).toHaveValue(memo200);
-    await expect(dialog.locator('text=200/200')).toBeVisible();
+    await expect(memoTextarea).toHaveValue(memo50);
+    await expect(dialog.locator('text=50/50')).toBeVisible();
 
     // ===================================
     // Step 4: 履歴タブでline-clamp-1による省略表示確認
