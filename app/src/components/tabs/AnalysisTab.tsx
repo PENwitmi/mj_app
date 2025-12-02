@@ -1,9 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { AnalysisFilters } from '@/components/analysis/AnalysisFilters'
-// import { RankStatisticsChart } from '@/components/analysis/RankStatisticsChart'  // 横向き棒グラフ（円グラフに移行）
-import { RankStatisticsChartPiePrototype } from '@/components/test/RankStatisticsChartPiePrototype'  // 円グラフ
-import { RevenueTimelineChart } from '@/components/analysis/RevenueTimelineChart'
+import { DetailStatsTabs } from '@/components/analysis/DetailStatsTabs'
 import { useSessions } from '@/hooks/useSessions'
 import type { GameMode, PlayerResult, User } from '@/lib/db-utils'
 import type { PeriodType } from '@/lib/db-utils'
@@ -358,160 +356,15 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
             </Card>
           )}
 
-          {/* 統合統計カード（着順・収支・ポイント・チップ） */}
-          {(revenueStats || pointStats || chipStats || rankStats) && (
-            <Card className="py-3">
-              <CardContent className="p-3">
-                <div className="grid grid-cols-2 gap-3">
-                  {/* 半荘着順統計 */}
-                  {selectedMode !== 'all' && rankStats ? (
-                    <div className="border-r pl-2 pr-3">
-                      <div className="text-base font-semibold mb-2">📊 半荘着順</div>
-                      <div className="space-y-1 text-base">
-                        <div className="flex">
-                          <span className="w-12">1位:</span>
-                          <span className="flex-1 text-right">{rankStats.rankCounts.first}回 ({rankStats.rankRates.first.toFixed(1)}%)</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-12">2位:</span>
-                          <span className="flex-1 text-right">{rankStats.rankCounts.second}回 ({rankStats.rankRates.second.toFixed(1)}%)</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-12">3位:</span>
-                          <span className="flex-1 text-right">{rankStats.rankCounts.third}回 ({rankStats.rankRates.third.toFixed(1)}%)</span>
-                        </div>
-                        {selectedMode === '4-player' && rankStats.rankCounts.fourth !== undefined && (
-                          <div className="flex">
-                            <span className="w-12">4位:</span>
-                            <span className="flex-1 text-right">{rankStats.rankCounts.fourth}回 ({rankStats.rankRates.fourth?.toFixed(1)}%)</span>
-                          </div>
-                        )}
-                        <div className="flex pt-1 border-t font-bold">
-                          <span className="w-12">平均:</span>
-                          <span className="flex-1 text-right">{rankStats.averageRank.toFixed(2)}位</span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="border-r pr-3">
-                      <div className="text-xs text-muted-foreground text-center pt-6">
-                        着順統計は非表示
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 収支統計 */}
-                  {revenueStats && (
-                    <div className="pl-2 pr-2">
-                      <div className="text-base font-semibold mb-2">💰 収支</div>
-                      <div className="space-y-1 text-lg">
-                        <div className="flex">
-                          <span className="w-12">+:</span>
-                          <span className="flex-1 text-right text-blue-600">+{revenueStats.totalIncome}pt</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-12">-:</span>
-                          <span className="flex-1 text-right text-red-600">{revenueStats.totalExpense}pt</span>
-                        </div>
-                        <div className="flex pt-1 border-t font-bold">
-                          <span className="w-12">計:</span>
-                          <span className={`flex-1 text-right ${revenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                            {revenueStats.totalBalance >= 0 ? '+' : ''}{revenueStats.totalBalance}pt
-                          </span>
-                        </div>
-                        <div className="flex text-sm text-muted-foreground">
-                          <span className="w-20">うち場代:</span>
-                          <span className="flex-1 text-right">
-                            {(() => {
-                              const value = Math.abs(revenueStats.totalParlorFee);
-                              if (revenueStats.totalParlorFee > 0) return `-${value}pt`;
-                              if (revenueStats.totalParlorFee < 0) return `+${value}pt`;
-                              return `${value}pt`;
-                            })()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* スコア統計 */}
-                  {pointStats && (
-                    <div className="pt-3 border-t border-r pl-2 pr-3">
-                      <div className="text-base font-semibold mb-2">📈 スコア</div>
-                      <div className="space-y-1 text-lg">
-                        <div className="flex">
-                          <span className="w-8">+:</span>
-                          <span className="flex-1 text-right text-blue-600">+{pointStats.plusPoints}点</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-8">-:</span>
-                          <span className="flex-1 text-right text-red-600">{pointStats.minusPoints}点</span>
-                        </div>
-                        <div className="flex pt-1 border-t font-bold">
-                          <span className="w-8">計:</span>
-                          <span className={`flex-1 text-right ${pointStats.pointBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                            {pointStats.pointBalance >= 0 ? '+' : ''}{pointStats.pointBalance}点
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* チップ統計 */}
-                  {chipStats && (
-                    <div className="pt-3 border-t pl-2 pr-2">
-                      <div className="text-base font-semibold mb-2">🎰 チップ</div>
-                      <div className="space-y-1 text-lg">
-                        <div className="flex">
-                          <span className="w-8">+:</span>
-                          <span className="flex-1 text-right text-blue-600">+{chipStats.plusChips}枚</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-8">-:</span>
-                          <span className="flex-1 text-right text-red-600">{chipStats.minusChips}枚</span>
-                        </div>
-                        <div className="flex pt-1 border-t font-bold">
-                          <span className="w-8">計:</span>
-                          <span className={`flex-1 text-right ${chipStats.chipBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                            {chipStats.chipBalance >= 0 ? '+' : ''}{chipStats.chipBalance}枚
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 半荘着順統計グラフ（全体モード時は非表示） */}
-          {/* 横向き棒グラフ（円グラフに移行）
-          {selectedMode !== 'all' && rankStats && (
-            <RankStatisticsChart statistics={rankStats} mode={selectedMode} />
-          )}
-          */}
-          {/* 円グラフ */}
-          {selectedMode !== 'all' && rankStats && (
-            <RankStatisticsChartPiePrototype statistics={rankStats} mode={selectedMode} />
-          )}
-          {selectedMode === 'all' && (
-            <Card className="py-3">
-              <CardContent className="p-3 text-center">
-                <div className="text-base font-semibold mb-2">着順統計は非表示</div>
-                <p className="text-sm text-muted-foreground">
-                  ⚠️ 半荘着順統計は表示されません。
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  （人数によって着順の意味が異なるため）
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 収支推移グラフ */}
-          <RevenueTimelineChart
+          {/* 詳細データタブ（着順・収支・スコア・チップ） */}
+          <DetailStatsTabs
+            rankStats={rankStats}
+            revenueStats={revenueStats}
+            pointStats={pointStats}
+            chipStats={chipStats}
             sessions={filteredSessions}
             userId={selectedUserId}
+            mode={selectedMode}
           />
         </>
       )}
