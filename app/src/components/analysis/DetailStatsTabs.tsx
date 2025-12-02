@@ -1,9 +1,11 @@
+import { useMemo } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
-import { RankStatisticsChartPiePrototype } from '@/components/test/RankStatisticsChartPiePrototype'
-import { RevenueTimelineChart } from '@/components/analysis/RevenueTimelineChart'
+import { RankTimelineChart } from '@/components/analysis/RankTimelineChart'
+import { TimelineAreaChart, type TimelineDataPoint } from '@/components/analysis/TimelineAreaChart'
 import type { RankStatistics, ExtendedRevenueStatistics, PointStatistics, ChipStatistics, GameMode } from '@/lib/db-utils'
 import type { SessionWithSummary } from '@/hooks/useSessions'
+import { umaMarkToValue } from '@/lib/uma-utils'
 
 interface DetailStatsTabsProps {
   rankStats: RankStatistics | undefined
@@ -13,6 +15,134 @@ interface DetailStatsTabsProps {
   sessions: SessionWithSummary[]
   userId: string
   mode: GameMode | 'all'
+}
+
+/**
+ * 日付文字列をラベル形式に変換
+ */
+function formatDateLabel(dateStr: string): string {
+  const [, month, day] = dateStr.split('-')
+  return `${month}/${day}`
+}
+
+/**
+ * 収支推移データを準備（面積+折れ線用）
+ */
+function prepareRevenueTimelineData(
+  sessions: SessionWithSummary[],
+  userId: string
+): TimelineDataPoint[] {
+  // 作成日時昇順ソート
+  const sorted = [...sessions].sort((a, b) =>
+    a.session.createdAt.getTime() - b.session.createdAt.getTime()
+  )
+
+  let cumulative = 0
+
+  return sorted.map(({ session, hanchans }) => {
+    let sessionRevenue = 0
+    let sessionChips = 0
+    let sessionParlorFee = 0
+    let chipsInitialized = false
+
+    hanchans?.forEach(hanchan => {
+      const userResult = hanchan.players.find(p => p.userId === userId)
+      if (!userResult || userResult.isSpectator || userResult.score === null) return
+
+      if (!chipsInitialized) {
+        sessionChips = userResult.chips || 0
+        sessionParlorFee = userResult.parlorFee || 0
+        chipsInitialized = true
+      }
+
+      const umaPoints = umaMarkToValue(userResult.umaMark)
+      const subtotal = userResult.score + umaPoints * session.umaValue
+      const scorePayout = subtotal * session.rate
+      sessionRevenue += scorePayout
+    })
+
+    if (chipsInitialized) {
+      const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
+      sessionRevenue += chipsPayout
+    }
+
+    cumulative += sessionRevenue
+
+    return {
+      label: formatDateLabel(session.date),
+      value: sessionRevenue,
+      cumulative
+    }
+  })
+}
+
+/**
+ * スコア推移データを準備（面積+折れ線用）
+ * ※ rate変換前の素点合計
+ */
+function prepareScoreTimelineData(
+  sessions: SessionWithSummary[],
+  userId: string
+): TimelineDataPoint[] {
+  const sorted = [...sessions].sort((a, b) =>
+    a.session.createdAt.getTime() - b.session.createdAt.getTime()
+  )
+
+  let cumulative = 0
+
+  return sorted.map(({ session, hanchans }) => {
+    let sessionScore = 0
+
+    hanchans?.forEach(hanchan => {
+      const userResult = hanchan.players.find(p => p.userId === userId)
+      if (!userResult || userResult.isSpectator || userResult.score === null) return
+      sessionScore += userResult.score
+    })
+
+    cumulative += sessionScore
+
+    return {
+      label: formatDateLabel(session.date),
+      value: sessionScore,
+      cumulative
+    }
+  })
+}
+
+/**
+ * チップ推移データを準備（面積+折れ線用）
+ */
+function prepareChipTimelineData(
+  sessions: SessionWithSummary[],
+  userId: string
+): TimelineDataPoint[] {
+  const sorted = [...sessions].sort((a, b) =>
+    a.session.createdAt.getTime() - b.session.createdAt.getTime()
+  )
+
+  let cumulative = 0
+
+  return sorted.map(({ session, hanchans }) => {
+    let sessionChips = 0
+    let found = false
+
+    // 最初の半荘からチップ数を取得
+    hanchans?.forEach(hanchan => {
+      if (found) return
+      const userResult = hanchan.players.find(p => p.userId === userId)
+      if (!userResult || userResult.isSpectator) return
+      sessionChips = userResult.chips || 0
+      found = true
+    })
+
+    cumulative += sessionChips
+
+    return {
+      label: formatDateLabel(session.date),
+      value: sessionChips,
+      cumulative
+    }
+  })
 }
 
 export function DetailStatsTabs({
@@ -26,6 +156,24 @@ export function DetailStatsTabs({
 }: DetailStatsTabsProps) {
   // 全体モード時は収支タブをデフォルトに
   const defaultTab = mode === 'all' ? 'revenue' : 'rank'
+
+  // 収支推移データ
+  const revenueChartData = useMemo(() => {
+    if (sessions.length === 0) return []
+    return prepareRevenueTimelineData(sessions, userId)
+  }, [sessions, userId])
+
+  // スコア推移データ
+  const scoreChartData = useMemo(() => {
+    if (sessions.length === 0) return []
+    return prepareScoreTimelineData(sessions, userId)
+  }, [sessions, userId])
+
+  // チップ推移データ
+  const chipChartData = useMemo(() => {
+    if (sessions.length === 0) return []
+    return prepareChipTimelineData(sessions, userId)
+  }, [sessions, userId])
 
   return (
     <Card className="py-3">
@@ -97,8 +245,8 @@ export function DetailStatsTabs({
                   </div>
                 </div>
 
-                {/* 着順円グラフ */}
-                <RankStatisticsChartPiePrototype statistics={rankStats} mode={mode} />
+                {/* 着順推移グラフ */}
+                <RankTimelineChart sessions={sessions} userId={userId} mode={mode} />
               </>
             ) : (
               <div className="text-center py-6 text-sm text-muted-foreground">
@@ -142,8 +290,12 @@ export function DetailStatsTabs({
                   </div>
                 </div>
 
-                {/* 収支推移グラフ */}
-                <RevenueTimelineChart sessions={sessions} userId={userId} />
+                {/* 収支推移グラフ（面積+棒） */}
+                <TimelineAreaChart
+                  data={revenueChartData}
+                  title="📈 収支推移"
+                  unit="pt"
+                />
               </>
             ) : (
               <div className="text-center py-6 text-sm text-muted-foreground">
@@ -180,10 +332,13 @@ export function DetailStatsTabs({
                   </div>
                 </div>
 
-                {/* グラフは#14で実装予定 */}
-                <div className="text-center py-4 text-xs text-muted-foreground border-t">
-                  （グラフは今後実装予定）
-                </div>
+                {/* スコア推移グラフ（面積+棒） */}
+                <TimelineAreaChart
+                  data={scoreChartData}
+                  title="📈 スコア推移"
+                  unit="点"
+                  colors={{ area: "#f59e0b", bar: "#3b82f6" }}
+                />
               </>
             ) : (
               <div className="text-center py-6 text-sm text-muted-foreground">
@@ -220,10 +375,13 @@ export function DetailStatsTabs({
                   </div>
                 </div>
 
-                {/* グラフは#14で実装予定 */}
-                <div className="text-center py-4 text-xs text-muted-foreground border-t">
-                  （グラフは今後実装予定）
-                </div>
+                {/* チップ推移グラフ（面積+棒） */}
+                <TimelineAreaChart
+                  data={chipChartData}
+                  title="📈 チップ推移"
+                  unit="枚"
+                  colors={{ area: "#ec4899", bar: "#3b82f6" }}
+                />
               </>
             ) : (
               <div className="text-center py-6 text-sm text-muted-foreground">
