@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
-import { Switch } from '@/components/ui/switch'
 import { RankTimelineChart } from '@/components/analysis/RankTimelineChart'
 import { TimelineAreaChart, type TimelineDataPoint } from '@/components/analysis/TimelineAreaChart'
 import type { RankStatistics, ExtendedRevenueStatistics, PointStatistics, ChipStatistics, GameMode } from '@/lib/db-utils'
@@ -284,14 +283,20 @@ export function DetailStatsTabs({
           <TabsContent value="revenue" className="space-y-3 mt-0">
             {revenueStats ? (
               <>
-                {/* 場代トグル */}
-                <div className="flex items-center justify-end gap-2 text-sm">
-                  <span className="text-muted-foreground">場代を含む</span>
-                  <Switch
-                    checked={includeParlorFee}
-                    onCheckedChange={onIncludeParlorFeeChange}
-                  />
-                </div>
+                {/* 場代切り替えタブ */}
+                <Tabs
+                  value={includeParlorFee ? 'include' : 'exclude'}
+                  onValueChange={(v) => onIncludeParlorFeeChange(v === 'include')}
+                >
+                  <TabsList className="grid w-full grid-cols-2 h-9">
+                    <TabsTrigger value="exclude" className="text-xs">
+                      場代抜き
+                    </TabsTrigger>
+                    <TabsTrigger value="include" className="text-xs">
+                      場代込み
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
 
                 {/* 収支統計グリッド（2行×2列） */}
                 <div className="grid grid-cols-2 gap-2">
