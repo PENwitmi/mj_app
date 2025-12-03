@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
 import { RankTimelineChart } from '@/components/analysis/RankTimelineChart'
 import { TimelineAreaChart, type TimelineDataPoint } from '@/components/analysis/TimelineAreaChart'
 import type { RankStatistics, ExtendedRevenueStatistics, PointStatistics, ChipStatistics, GameMode } from '@/lib/db-utils'
@@ -15,6 +16,8 @@ interface DetailStatsTabsProps {
   sessions: SessionWithSummary[]
   userId: string
   mode: GameMode | 'all'
+  includeParlorFee: boolean
+  onIncludeParlorFeeChange: (value: boolean) => void
 }
 
 /**
@@ -30,7 +33,8 @@ function formatDateLabel(dateStr: string): string {
  */
 function prepareRevenueTimelineData(
   sessions: SessionWithSummary[],
-  userId: string
+  userId: string,
+  includeParlorFee: boolean
 ): TimelineDataPoint[] {
   // 作成日時昇順ソート
   const sorted = [...sessions].sort((a, b) =>
@@ -62,7 +66,9 @@ function prepareRevenueTimelineData(
     })
 
     if (chipsInitialized) {
-      const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
+      const chipsPayout = includeParlorFee
+        ? sessionChips * session.chipRate - sessionParlorFee
+        : sessionChips * session.chipRate
       sessionRevenue += chipsPayout
     }
 
@@ -152,16 +158,35 @@ export function DetailStatsTabs({
   chipStats,
   sessions,
   userId,
-  mode
+  mode,
+  includeParlorFee,
+  onIncludeParlorFeeChange
 }: DetailStatsTabsProps) {
   // 全体モード時は収支タブをデフォルトに
   const defaultTab = mode === 'all' ? 'revenue' : 'rank'
 
-  // 収支推移データ
+  // 収支推移データ（場代オプション対応）
   const revenueChartData = useMemo(() => {
     if (sessions.length === 0) return []
-    return prepareRevenueTimelineData(sessions, userId)
-  }, [sessions, userId])
+    return prepareRevenueTimelineData(sessions, userId, includeParlorFee)
+  }, [sessions, userId, includeParlorFee])
+
+  // 収支統計（場代オプション対応） - グラフデータから計算
+  const localRevenueStats = useMemo(() => {
+    let totalIncome = 0
+    let totalExpense = 0
+    revenueChartData.forEach(d => {
+      if (d.value >= 0) totalIncome += d.value
+      else totalExpense += d.value
+    })
+    return {
+      totalIncome,
+      totalExpense,
+      totalBalance: totalIncome + totalExpense,
+      // 場代はrevenueStatsから取得（参考表示用）
+      totalParlorFee: revenueStats?.totalParlorFee ?? 0
+    }
+  }, [revenueChartData, revenueStats])
 
   // スコア推移データ
   const scoreChartData = useMemo(() => {
@@ -259,33 +284,44 @@ export function DetailStatsTabs({
           <TabsContent value="revenue" className="space-y-3 mt-0">
             {revenueStats ? (
               <>
+                {/* 場代トグル */}
+                <div className="flex items-center justify-end gap-2 text-sm">
+                  <span className="text-muted-foreground">場代を含む</span>
+                  <Switch
+                    checked={includeParlorFee}
+                    onCheckedChange={onIncludeParlorFeeChange}
+                  />
+                </div>
+
                 {/* 収支統計グリッド（2行×2列） */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col items-center py-2">
                     <span className="text-xs text-muted-foreground mb-1">プラス</span>
                     <span className="text-xl font-bold text-blue-600">
-                      +{revenueStats.totalIncome.toLocaleString()}pt
+                      +{Math.round(localRevenueStats.totalIncome).toLocaleString()}pt
                     </span>
                   </div>
                   <div className="flex flex-col items-center py-2">
                     <span className="text-xs text-muted-foreground mb-1">マイナス</span>
                     <span className="text-xl font-bold text-red-600">
-                      {revenueStats.totalExpense.toLocaleString()}pt
+                      {Math.round(localRevenueStats.totalExpense).toLocaleString()}pt
                     </span>
                   </div>
                   <div className="flex flex-col items-center py-2">
                     <span className="text-xs text-muted-foreground mb-1">合計</span>
                     <span className={`text-xl font-bold ${
-                      revenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'
+                      localRevenueStats.totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'
                     }`}>
-                      {revenueStats.totalBalance >= 0 ? '+' : ''}{revenueStats.totalBalance.toLocaleString()}pt
+                      {localRevenueStats.totalBalance >= 0 ? '+' : ''}{Math.round(localRevenueStats.totalBalance).toLocaleString()}pt
                     </span>
                   </div>
                   <div className="flex flex-col items-center py-2">
-                    <span className="text-xs text-muted-foreground mb-1">うち場代</span>
-                    <span className="text-xl font-bold text-muted-foreground">
-                      {revenueStats.totalParlorFee > 0 ? '-' : revenueStats.totalParlorFee < 0 ? '+' : ''}
-                      {Math.abs(revenueStats.totalParlorFee).toLocaleString()}pt
+                    <span className={`text-xs mb-1 ${includeParlorFee ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                      うち場代{!includeParlorFee && ' (参考)'}
+                    </span>
+                    <span className={`text-xl font-bold ${includeParlorFee ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                      {localRevenueStats.totalParlorFee > 0 ? '-' : localRevenueStats.totalParlorFee < 0 ? '+' : ''}
+                      {Math.abs(Math.round(localRevenueStats.totalParlorFee)).toLocaleString()}pt
                     </span>
                   </div>
                 </div>

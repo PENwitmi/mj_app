@@ -123,8 +123,8 @@ function createRanking(
 const formatters = {
   rank: (v: number) => `${v.toFixed(2)}位`,
   percent: (v: number) => `${v.toFixed(1)}%`,
-  revenue: (v: number) => `${v >= 0 ? '+' : ''}${v.toLocaleString()}pt`,
-  score: (v: number) => `${v >= 0 ? '+' : ''}${v.toLocaleString()}点`,
+  revenue: (v: number) => `${v >= 0 ? '+' : ''}${Math.round(v).toLocaleString()}pt`,
+  score: (v: number) => `${v >= 0 ? '+' : ''}${Math.round(v).toLocaleString()}点`,
   chips: (v: number) => `${v >= 0 ? '+' : ''}${v}枚`,
   streak: (v: number) => `${v}連勝`
 }

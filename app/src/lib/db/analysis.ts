@@ -117,6 +117,13 @@ export interface ExtendedRevenueStatistics extends RevenueStatistics {
 }
 
 /**
+ * 統計計算オプション
+ */
+export interface StatisticsOptions {
+  excludeParlorFee?: boolean  // 場代を除外するか（デフォルト: true）
+}
+
+/**
  * 基本統計
  */
 export interface BasicStatistics {
@@ -276,7 +283,8 @@ export function calculateAllStatistics(
   sessions: FilteredSession[],
   targetUserId: string,
   mode: GameMode | 'all',
-  rankStats?: RankStatistics
+  rankStats?: RankStatistics,
+  options: StatisticsOptions = { excludeParlorFee: true }
 ): AllStatistics {
   // 収支統計用
   let totalIncome = 0
@@ -349,7 +357,9 @@ export function calculateAllStatistics(
       }
 
       // 収支統計: chips/parlorFeeを加算
-      const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
+      const chipsPayout = options.excludeParlorFee
+        ? sessionChips * session.chipRate
+        : sessionChips * session.chipRate - sessionParlorFee
       sessionRevenue += chipsPayout
 
       // 収支統計: セッション単位でプラス/マイナスに振り分け
@@ -413,7 +423,8 @@ export function calculateAllStatistics(
 export function calculateRecordStatistics(
   sessions: Array<{ session: Session; hanchans?: Array<Hanchan & { players: PlayerResult[] }> }>,
   targetUserId: string,
-  _selectedMode: GameMode | 'all' // 将来の拡張用（現在は各半荘のmodeを使用）
+  _selectedMode: GameMode | 'all', // 将来の拡張用（現在は各半荘のmodeを使用）
+  options: StatisticsOptions = { excludeParlorFee: true }
 ): RecordStatistics {
   // 初期値設定
   let maxScoreInHanchan = { value: -Infinity, date: '' }
@@ -529,7 +540,9 @@ export function calculateRecordStatistics(
 
     // chips/parlorFee加算
     if (chipsInitialized) {
-      const chipsPayout = sessionChips * session.chipRate - sessionParlorFee
+      const chipsPayout = options.excludeParlorFee
+        ? sessionChips * session.chipRate
+        : sessionChips * session.chipRate - sessionParlorFee
       sessionRevenue += chipsPayout
     }
 

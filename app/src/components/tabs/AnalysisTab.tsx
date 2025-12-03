@@ -31,6 +31,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('all-time')
   const [selectedMode, setSelectedMode] = useState<GameMode | 'all'>('4-player')
   const [sessionCountFilter, setSessionCountFilter] = useState<SessionCountFilter>('all')
+  const [includeParlorFee, setIncludeParlorFee] = useState(false)  // 詳細タブ収支の場代含む/含まない
 
   // 利用可能な年リストを生成（セッションデータから）
   const availableYears = useMemo(() => {
@@ -385,6 +386,8 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
             sessions={filteredSessions}
             userId={selectedUserId}
             mode={selectedMode}
+            includeParlorFee={includeParlorFee}
+            onIncludeParlorFeeChange={setIncludeParlorFee}
           />
         </>
       )}

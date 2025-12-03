@@ -67,7 +67,8 @@ export type {
   ExtendedRevenueStatistics,
   BasicStatistics,
   AllStatistics,
-  FilteredSession
+  FilteredSession,
+  StatisticsOptions
 } from './analysis';
 
 // テンプレート管理
