@@ -160,26 +160,28 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
   }
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="space-y-3">
-      {/* フィルターエリア */}
-      <AnalysisFilters
-        viewMode={viewMode}
-        selectedUserId={selectedUserId}
-        selectedPeriod={selectedPeriod}
-        selectedMode={selectedMode}
-        sessionCountFilter={sessionCountFilter}
-        mainUser={mainUser}
-        users={users}
-        availableYears={availableYears}
-        onViewModeChange={setViewMode}
-        onUserChange={setSelectedUserId}
-        onPeriodChange={setSelectedPeriod}
-        onModeChange={setSelectedMode}
-        onSessionCountFilterChange={setSessionCountFilter}
-      />
+    <div className="h-full flex flex-col">
+      {/* フィルターエリア（固定表示） */}
+      <div className="shrink-0 pb-3">
+        <AnalysisFilters
+          viewMode={viewMode}
+          selectedUserId={selectedUserId}
+          selectedPeriod={selectedPeriod}
+          selectedMode={selectedMode}
+          sessionCountFilter={sessionCountFilter}
+          mainUser={mainUser}
+          users={users}
+          availableYears={availableYears}
+          onViewModeChange={setViewMode}
+          onUserChange={setSelectedUserId}
+          onPeriodChange={setSelectedPeriod}
+          onModeChange={setSelectedMode}
+          onSessionCountFilterChange={setSessionCountFilter}
+        />
+      </div>
 
-      {/* 統計表示エリア */}
+      {/* 統計表示エリア（スクロール可能） */}
+      <div className="flex-1 overflow-auto space-y-3">
       {viewMode === 'comparison' ? (
         // 全ユーザー比較モード
         <UserRankingView
