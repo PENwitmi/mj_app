@@ -1,14 +1,15 @@
 import type { GameMode } from '@/lib/db'
-import type { Rankings } from '@/hooks/useAllUsersRanking'
+import type { Rankings, SessionCountFilter } from '@/hooks/useAllUsersRanking'
 import { RankingSection } from './RankingSection'
 
 interface UserRankingViewProps {
   rankings: Rankings
   userCount: number
   mode: GameMode | 'all'
+  sessionCountFilter: SessionCountFilter
 }
 
-export function UserRankingView({ rankings, userCount, mode }: UserRankingViewProps) {
+export function UserRankingView({ rankings, userCount, mode, sessionCountFilter }: UserRankingViewProps) {
   // ユーザーが1人以下の場合
   if (userCount <= 1) {
     return (
@@ -44,6 +45,7 @@ export function UserRankingView({ rankings, userCount, mode }: UserRankingViewPr
             { label: '連対率', entries: rankings.rentaiRate },
             { label: 'ラス回避率', entries: rankings.lastAvoidRate }
           ]}
+          sessionCountFilter={sessionCountFilter}
         />
       )}
 
@@ -55,6 +57,7 @@ export function UserRankingView({ rankings, userCount, mode }: UserRankingViewPr
           { label: '通算収支', entries: rankings.totalRevenue },
           { label: '平均収支/セッション', entries: rankings.averageRevenue }
         ]}
+        sessionCountFilter={sessionCountFilter}
       />
 
       {/* 記録ランキング */}
@@ -67,6 +70,7 @@ export function UserRankingView({ rankings, userCount, mode }: UserRankingViewPr
           { label: '1日最高チップ', entries: rankings.maxChipsInSession },
           { label: '最大連続トップ', entries: rankings.maxConsecutiveTop }
         ]}
+        sessionCountFilter={sessionCountFilter}
       />
     </div>
   )

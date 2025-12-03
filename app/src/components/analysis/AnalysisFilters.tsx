@@ -3,6 +3,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { GameMode } from '@/lib/db-utils'
 import type { PeriodType } from '@/lib/db-utils'
 import type { User } from '@/lib/db-utils'
+import type { SessionCountFilter } from '@/hooks/useAllUsersRanking'
 
 export type ViewMode = 'personal' | 'comparison'
 
@@ -11,6 +12,7 @@ interface AnalysisFiltersProps {
   selectedUserId: string
   selectedPeriod: PeriodType
   selectedMode: GameMode | 'all'
+  sessionCountFilter: SessionCountFilter
   mainUser: User | null
   users: User[]
   availableYears: number[]
@@ -18,6 +20,7 @@ interface AnalysisFiltersProps {
   onUserChange: (userId: string) => void
   onPeriodChange: (period: PeriodType) => void
   onModeChange: (mode: GameMode | 'all') => void
+  onSessionCountFilterChange: (filter: SessionCountFilter) => void
 }
 
 export function AnalysisFilters({
@@ -25,13 +28,15 @@ export function AnalysisFilters({
   selectedUserId,
   selectedPeriod,
   selectedMode,
+  sessionCountFilter,
   mainUser,
   users,
   availableYears,
   onViewModeChange,
   onUserChange,
   onPeriodChange,
-  onModeChange
+  onModeChange,
+  onSessionCountFilterChange
 }: AnalysisFiltersProps) {
   return (
     <Card className="py-0">
@@ -53,70 +58,94 @@ export function AnalysisFilters({
           </Tabs>
         </div>
 
-        {/* ユーザー選択・期間選択 */}
-        <div className="grid grid-cols-2 gap-2">
-          {/* ユーザー選択（比較モード時は非活性） */}
-          <div className="space-y-1">
-            <label
-              htmlFor="analysis-user-select"
-              className={`text-xs ${viewMode === 'comparison' ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
-            >
-              ユーザー
-            </label>
-            <select
-              id="analysis-user-select"
-              name="userId"
-              value={selectedUserId}
-              onChange={(e) => onUserChange(e.target.value)}
-              disabled={viewMode === 'comparison'}
-              className={`w-full h-12 text-sm border rounded px-2 ${
-                viewMode === 'comparison' ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-              aria-label="分析対象ユーザーを選択"
-            >
-              {/* メインユーザー */}
-              {mainUser && (
-                <option key={mainUser.id} value={mainUser.id}>
-                  自分
-                </option>
-              )}
+        {/* 個人統計モード: ユーザー選択・期間選択 */}
+        {viewMode === 'personal' && (
+          <div className="grid grid-cols-2 gap-2">
+            {/* ユーザー選択 */}
+            <div className="space-y-1">
+              <label
+                htmlFor="analysis-user-select"
+                className="text-xs text-muted-foreground"
+              >
+                ユーザー
+              </label>
+              <select
+                id="analysis-user-select"
+                name="userId"
+                value={selectedUserId}
+                onChange={(e) => onUserChange(e.target.value)}
+                className="w-full h-12 text-sm border rounded px-2"
+                aria-label="分析対象ユーザーを選択"
+              >
+                {/* メインユーザー */}
+                {mainUser && (
+                  <option key={mainUser.id} value={mainUser.id}>
+                    自分
+                  </option>
+                )}
 
-              {/* 登録ユーザー */}
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
+                {/* 登録ユーザー */}
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* 期間選択 */}
-          <div className="space-y-1">
-            <label
-              htmlFor="analysis-period-select"
-              className="text-xs text-muted-foreground"
-            >
-              期間
-            </label>
-            <select
-              id="analysis-period-select"
-              name="period"
-              value={selectedPeriod}
-              onChange={(e) => onPeriodChange(e.target.value as PeriodType)}
-              className="w-full h-12 text-sm border rounded px-2"
-              aria-label="分析期間を選択"
-            >
-              <option value="this-month">今月</option>
-              <option value="this-year">今年</option>
-              {availableYears.map((year) => (
-                <option key={year} value={`year-${year}`}>
-                  {year}年
-                </option>
-              ))}
-              <option value="all-time">全期間</option>
-            </select>
+            {/* 期間選択 */}
+            <div className="space-y-1">
+              <label
+                htmlFor="analysis-period-select"
+                className="text-xs text-muted-foreground"
+              >
+                期間
+              </label>
+              <select
+                id="analysis-period-select"
+                name="period"
+                value={selectedPeriod}
+                onChange={(e) => onPeriodChange(e.target.value as PeriodType)}
+                className="w-full h-12 text-sm border rounded px-2"
+                aria-label="分析期間を選択"
+              >
+                <option value="this-month">今月</option>
+                <option value="this-year">今年</option>
+                {availableYears.map((year) => (
+                  <option key={year} value={`year-${year}`}>
+                    {year}年
+                  </option>
+                ))}
+                <option value="all-time">全期間</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* 比較モード: セッション数フィルタ */}
+        {viewMode === 'comparison' && (
+          <div>
+            <Tabs
+              value={sessionCountFilter}
+              onValueChange={(value) => onSessionCountFilterChange(value as SessionCountFilter)}
+            >
+              <TabsList
+                className="grid w-full grid-cols-3 h-10"
+                aria-label="セッション数フィルタ選択"
+              >
+                <TabsTrigger value="last-5" className="text-sm">
+                  直近5
+                </TabsTrigger>
+                <TabsTrigger value="last-10" className="text-sm">
+                  直近10
+                </TabsTrigger>
+                <TabsTrigger value="all" className="text-sm">
+                  全データ
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
 
         {/* モードタブ */}
         <div>

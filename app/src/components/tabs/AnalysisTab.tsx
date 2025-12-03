@@ -4,7 +4,7 @@ import { AnalysisFilters, type ViewMode } from '@/components/analysis/AnalysisFi
 import { DetailStatsTabs } from '@/components/analysis/DetailStatsTabs'
 import { UserRankingView } from '@/components/analysis/UserRankingView'
 import { useSessions } from '@/hooks/useSessions'
-import { useAllUsersRanking } from '@/hooks/useAllUsersRanking'
+import { useAllUsersRanking, type SessionCountFilter } from '@/hooks/useAllUsersRanking'
 import type { GameMode, PlayerResult, User } from '@/lib/db-utils'
 import type { PeriodType } from '@/lib/db-utils'
 import {
@@ -30,6 +30,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
   const [selectedUserId, setSelectedUserId] = useState<string>(mainUser?.id || '')
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('all-time')
   const [selectedMode, setSelectedMode] = useState<GameMode | 'all'>('4-player')
+  const [sessionCountFilter, setSessionCountFilter] = useState<SessionCountFilter>('all')
 
   // 利用可能な年リストを生成（セッションデータから）
   const availableYears = useMemo(() => {
@@ -122,12 +123,13 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
     return filtered
   }, [sessions, selectedPeriod])
 
-  // 全ユーザーランキング（Issue #16）
+  // 全ユーザーランキング（Issue #16, #17）
   const { rankings, userCount } = useAllUsersRanking(
     rankingFilteredSessions,
     selectedMode,
     mainUser,
-    users
+    users,
+    sessionCountFilter
   )
 
   // ローディング・エラー表示
@@ -166,6 +168,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
         selectedUserId={selectedUserId}
         selectedPeriod={selectedPeriod}
         selectedMode={selectedMode}
+        sessionCountFilter={sessionCountFilter}
         mainUser={mainUser}
         users={users}
         availableYears={availableYears}
@@ -173,6 +176,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
         onUserChange={setSelectedUserId}
         onPeriodChange={setSelectedPeriod}
         onModeChange={setSelectedMode}
+        onSessionCountFilterChange={setSessionCountFilter}
       />
 
       {/* 統計表示エリア */}
@@ -182,6 +186,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
           rankings={rankings}
           userCount={userCount}
           mode={selectedMode}
+          sessionCountFilter={sessionCountFilter}
         />
       ) : filteredSessions.length === 0 ? (
         <Card className="py-3">

@@ -12,10 +12,13 @@ import {
 // Types
 // ========================================
 
+export type SessionCountFilter = 'all' | 'last-5' | 'last-10'
+
 export interface UserRankingData {
   userId: string
   userName: string
   isMainUser: boolean
+  sessionCount: number  // 実際の参加セッション数
   stats: {
     // 基本成績（mode='all'時はundefined）
     averageRank?: number
@@ -139,7 +142,8 @@ export function useAllUsersRanking(
   sessions: SessionWithHanchans[],
   mode: GameMode | 'all',
   mainUser: User | null,
-  users: User[]
+  users: User[],
+  sessionCountFilter: SessionCountFilter = 'all'
 ): UseAllUsersRankingResult {
   const rankings = useMemo(() => {
     // 全ユーザーリスト
@@ -152,13 +156,33 @@ export function useAllUsersRanking(
     // モードでセッションをフィルタ
     const filteredSessions: FilteredSession[] = filterSessionsByMode(sessions, mode)
 
+    // セッション数フィルタの閾値を取得
+    const getSessionLimit = (filter: SessionCountFilter): number | null => {
+      switch (filter) {
+        case 'last-5': return 5
+        case 'last-10': return 10
+        default: return null
+      }
+    }
+    const sessionLimit = getSessionLimit(sessionCountFilter)
+
     // 各ユーザーの統計を計算（内部用に totalSessions を含む）
     type UserStatsInternal = UserRankingData & { totalSessions: number }
     const userStats: UserStatsInternal[] = allUsers.map(user => {
       // ユーザーが参加しているセッションをフィルタ
-      const userSessions = filteredSessions.filter(({ hanchans }) =>
+      let userSessions = filteredSessions.filter(({ hanchans }) =>
         hanchans?.some(h => h.players.some(p => p.userId === user.id && !p.isSpectator))
       )
+
+      // 実際の参加セッション数を記録
+      const totalSessionCount = userSessions.length
+
+      // セッション数フィルタが適用されている場合、日付降順でN件に絞り込む
+      if (sessionLimit !== null && userSessions.length > 0) {
+        userSessions = [...userSessions]
+          .sort((a, b) => b.session.date.localeCompare(a.session.date))
+          .slice(0, sessionLimit)
+      }
 
       // 統計計算用の半荘リスト
       const allHanchans = userSessions.flatMap(({ hanchans }) => hanchans || [])
@@ -196,7 +220,8 @@ export function useAllUsersRanking(
         userId: user.id,
         userName: user.isMainUser ? '自分' : user.name,
         isMainUser: user.isMainUser,
-        totalSessions: allStats.basic.totalSessions,
+        sessionCount: totalSessionCount,  // 実際の参加セッション数（フィルタ前）
+        totalSessions: allStats.basic.totalSessions,  // 統計計算に使用したセッション数
         stats: {
           // 基本成績
           averageRank: rankStats?.averageRank,
@@ -287,7 +312,7 @@ export function useAllUsersRanking(
         formatters.streak
       )
     } satisfies Rankings
-  }, [sessions, mode, mainUser, users])
+  }, [sessions, mode, mainUser, users, sessionCountFilter])
 
   const userCount = useMemo(() => {
     const allUsers = mainUser ? [mainUser, ...users] : users

@@ -1,11 +1,12 @@
 import { Card, CardContent } from '@/components/ui/card'
-import type { RankingEntry } from '@/hooks/useAllUsersRanking'
+import type { RankingEntry, SessionCountFilter } from '@/hooks/useAllUsersRanking'
 
 interface RankingItemProps {
   entry: RankingEntry
+  sessionCountFilter: SessionCountFilter
 }
 
-function RankingItem({ entry }: RankingItemProps) {
+function RankingItem({ entry, sessionCountFilter }: RankingItemProps) {
   const { rank, user, formattedValue } = entry
 
   // メダルアイコン
@@ -23,6 +24,17 @@ function RankingItem({ entry }: RankingItemProps) {
   // 順位によるサイズ
   const sizeClass = rank === 1 ? 'text-xl' : rank <= 3 ? 'text-lg' : 'text-base'
 
+  // セッション数が閾値未満かチェック
+  const getSessionLimit = (filter: SessionCountFilter): number | null => {
+    switch (filter) {
+      case 'last-5': return 5
+      case 'last-10': return 10
+      default: return null
+    }
+  }
+  const sessionLimit = getSessionLimit(sessionCountFilter)
+  const showSessionNote = sessionLimit !== null && user.sessionCount < sessionLimit
+
   return (
     <div
       className={`flex items-center justify-between py-2.5 px-5 rounded ${
@@ -39,6 +51,13 @@ function RankingItem({ entry }: RankingItemProps) {
         <span className={`${sizeClass} font-medium ${user.isMainUser ? 'text-primary' : ''}`}>
           {user.userName}
         </span>
+
+        {/* セッション数が閾値未満の場合の注記 */}
+        {showSessionNote && (
+          <span className="text-xs text-muted-foreground">
+            ※{user.sessionCount}回
+          </span>
+        )}
       </div>
 
       {/* 値 */}
@@ -56,9 +75,10 @@ interface RankingSectionProps {
     label: string
     entries: RankingEntry[] | null
   }>
+  sessionCountFilter: SessionCountFilter
 }
 
-export function RankingSection({ title, icon, rankings }: RankingSectionProps) {
+export function RankingSection({ title, icon, rankings, sessionCountFilter }: RankingSectionProps) {
   // 表示可能なランキングがあるかチェック
   const hasValidRankings = rankings.some(r => r.entries && r.entries.length > 0)
 
@@ -87,6 +107,7 @@ export function RankingSection({ title, icon, rankings }: RankingSectionProps) {
                     <RankingItem
                       key={entry.user.userId}
                       entry={entry}
+                      sessionCountFilter={sessionCountFilter}
                     />
                   ))}
                 </div>

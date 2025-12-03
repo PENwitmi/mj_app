@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { RankStatisticsChartPiePrototype } from '@/components/test/RankStatisticsChartPiePrototype'
 import { AnalysisFilters, type ViewMode } from '@/components/analysis/AnalysisFilters'
 import { useSessions } from '@/hooks/useSessions'
+import type { SessionCountFilter } from '@/hooks/useAllUsersRanking'
 import type { RankStatistics, GameMode, User } from '@/lib/db-utils'
 import type { PeriodType } from '@/lib/db-utils'
 import {
@@ -30,6 +31,7 @@ export function TestTab({ mainUser, users, addNewUser: _addNewUser }: TestTabPro
   const [selectedUserId, setSelectedUserId] = useState<string>(mainUser?.id || '')
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('all-time')
   const [selectedMode, setSelectedMode] = useState<GameMode | 'all'>('4-player')
+  const [sessionCountFilter, setSessionCountFilter] = useState<SessionCountFilter>('all')
 
   // 利用可能な年リストを生成（セッションデータから）
   const availableYears = useMemo(() => {
@@ -179,6 +181,7 @@ export function TestTab({ mainUser, users, addNewUser: _addNewUser }: TestTabPro
             selectedUserId={selectedUserId}
             selectedPeriod={selectedPeriod}
             selectedMode={selectedMode}
+            sessionCountFilter={sessionCountFilter}
             mainUser={mainUser}
             users={users}
             availableYears={availableYears}
@@ -186,6 +189,7 @@ export function TestTab({ mainUser, users, addNewUser: _addNewUser }: TestTabPro
             onUserChange={setSelectedUserId}
             onPeriodChange={setSelectedPeriod}
             onModeChange={setSelectedMode}
+            onSessionCountFilterChange={setSessionCountFilter}
           />
 
           {/* 実データグラフ */}
