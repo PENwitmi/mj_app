@@ -41,15 +41,17 @@ export function calculateRanks(playerResults: PlayerResult[]): Map<string, numbe
   // 見学者を除外、かつ点数が入力されているプレイヤーのみを対象
   const activePlayers = playerResults
     .filter((p) => !p.isSpectator && p.score !== null)
-    .sort((a, b) => b.score - a.score) // 点数降順
+    .sort((a, b) => {
+      // 点数降順（高い方が上位）
+      if (b.score !== a.score) return b.score - a.score
+      // 同点の場合、ウママーク値で比較（値が大きい方が上位）
+      // ✗✗✗(-3) < ✗✗(-2) < ✗(-1) < ''(0) < ○(1) < ○○(2) < ○○○(3)
+      return umaMarkToValue(b.umaMark) - umaMarkToValue(a.umaMark)
+    })
 
-  // 着順を割り当て（同点の場合は同着）
-  let currentRank = 1
+  // 着順を割り当て（ソート順に1位から順番に）
   activePlayers.forEach((player, index) => {
-    if (index > 0 && player.score < activePlayers[index - 1].score) {
-      currentRank = index + 1
-    }
-    rankMap.set(player.id, currentRank)
+    rankMap.set(player.id, index + 1)
   })
 
   return rankMap

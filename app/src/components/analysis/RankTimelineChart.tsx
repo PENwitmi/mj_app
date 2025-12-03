@@ -4,6 +4,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import type { ChartConfig } from "@/components/ui/chart"
 import type { SessionWithSummary } from '@/hooks/useSessions'
 import type { GameMode, PlayerResult } from '@/lib/db-utils'
+import { umaMarkToValue } from '@/lib/uma-utils'
 
 interface RankTimelineChartProps {
   sessions: SessionWithSummary[]
@@ -20,6 +21,7 @@ interface RankDataPoint {
 
 /**
  * スコアから着順を計算（ローカル実装）
+ * 同点の場合はウママークで判定（✗が多い方が下位）
  */
 function calculateRanks(players: PlayerResult[]): Map<string, number> {
   const rankMap = new Map<string, number>()
@@ -27,15 +29,16 @@ function calculateRanks(players: PlayerResult[]): Map<string, number> {
   // 見学者を除外、かつ点数が入力されているプレイヤーのみを対象
   const activePlayers = players
     .filter((p) => !p.isSpectator && p.score !== null)
-    .sort((a, b) => b.score! - a.score!) // 点数降順
+    .sort((a, b) => {
+      // 点数降順（高い方が上位）
+      if (b.score! !== a.score!) return b.score! - a.score!
+      // 同点の場合、ウママーク値で比較（値が大きい方が上位）
+      return umaMarkToValue(b.umaMark) - umaMarkToValue(a.umaMark)
+    })
 
-  // 着順を割り当て（同点の場合は同着）
-  let currentRank = 1
+  // 着順を割り当て（ソート順に1位から順番に）
   activePlayers.forEach((player, index) => {
-    if (index > 0 && player.score! < activePlayers[index - 1].score!) {
-      currentRank = index + 1
-    }
-    rankMap.set(player.id, currentRank)
+    rankMap.set(player.id, index + 1)
   })
 
   return rankMap
