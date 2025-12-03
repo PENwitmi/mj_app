@@ -9,8 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Tech Stack:**
 - Vite + React 19 + TypeScript
 - Tailwind CSS v4 (Vite plugin使用)
+- shadcn/ui (Radix UI + Tailwind)
 - Dexie.js (IndexedDB wrapper)
-- Future: shadcn/ui, Capacitor
+- Recharts (グラフ描画)
+- Playwright (E2Eテスト)
+- Future: Capacitor (iOS/Android)
 
 ## Development Commands
 
@@ -64,7 +67,7 @@ screen -X -S dev-server quit
 
 ## Architecture
 
-### Data Model (4層構造)
+### Data Model (5エンティティ)
 
 ```
 User (ユーザー)
@@ -76,6 +79,9 @@ Hanchan (半荘 - 1ゲーム)
 PlayerResult (プレイヤー結果)
   ↓ N:1 (nullable)
 User (登録ユーザー)
+
+Template (テンプレート - よく使う設定)
+  - gameMode, playerIds[], rate, umaValue, chipRate, umaRule
 ```
 
 **Key Entities:**
@@ -101,20 +107,37 @@ User (登録ユーザー)
 - Boolean値はIndexedDBのインデックスに使用不可 → in-memory filteringで対応
 
 **Key Functions:**
+
+*ユーザー管理:*
 - `initializeApp()`: メインユーザー初期化（固定IDで重複防止）
 - `archiveUser(userId)`: ユーザーアーカイブ（論理削除）
 - `restoreUser(userId)`: アーカイブ済みユーザー復元
 - `getActiveUsers()`: アクティブユーザーのみ取得
-- `getArchivedUsers()`: アーカイブ済みユーザー取得
 - `getRegisteredUsers()`: 登録ユーザー取得（アクティブのみ、メインユーザー除く）
-- `deleteUser()`: **非推奨** - 内部でarchiveUserを呼ぶ
+
+*セッション管理:*
 - `saveSession(data)`: セッション保存（Session + Hanchan + PlayerResult一括作成）
-- `saveSessionWithSummary(data, mainUserId)`: セッション保存＋サマリー事前計算（パフォーマンス最適化版）
+- `saveSessionWithSummary(data, mainUserId)`: セッション保存＋サマリー事前計算
 - `deleteSession(sessionId)`: セッション削除（カスケード削除）
-- `validateZeroSum(hanchanId)`: ゼロサム検証
-- `validateUmaMarks(hanchanId)`: ウママーク合計検証
 - `getSessionWithDetails(sessionId)`: セッション+半荘+プレイヤー結果を一括取得
 - `calculateSessionSummary(sessionId, mainUserId)`: セッションサマリー計算
+
+*テンプレート管理:*
+- `getAllTemplates()`: 全テンプレート取得
+- `createTemplate(data)`: テンプレート作成
+- `updateTemplate(id, data)`: テンプレート更新
+- `deleteTemplate(id)`: テンプレート削除
+- `createTemplateFromSession(session, hanchans, name)`: セッションからテンプレート作成
+
+*分析・統計:*
+- `calculateAllStatistics(mainUserId, filter)`: 全統計計算
+- `calculateRankStatistics(sessions, mainUserId)`: 着順統計
+- `calculateRecordStatistics(sessions, mainUserId)`: 記録統計
+- `filterSessionsByPeriod(sessions, period)`: 期間フィルタ
+
+*バリデーション:*
+- `validateZeroSum(hanchanId)`: ゼロサム検証
+- `validateUmaMarks(hanchanId)`: ウママーク合計検証
 
 ### Error Handling & Logging
 
@@ -157,8 +180,19 @@ try {
 src/
 ├── lib/
 │   ├── db.ts              # Dexieスキーマ定義
-│   ├── db-utils.ts        # DB操作ヘルパー
+│   ├── db-utils.ts        # DB操作ヘルパー（re-export）
+│   ├── db/                # DB操作モジュール（分割）
+│   │   ├── index.ts       # エクスポート集約
+│   │   ├── users.ts       # ユーザー操作
+│   │   ├── sessions.ts    # セッション操作
+│   │   ├── hanchans.ts    # 半荘操作
+│   │   ├── templates.ts   # テンプレート操作
+│   │   ├── analysis.ts    # 分析・統計計算
+│   │   └── validation.ts  # バリデーション
 │   ├── session-utils.ts   # セッション計算・保存ロジック
+│   ├── share-utils.ts     # クリップボードコピー機能
+│   ├── uma-utils.ts       # ウマ計算ユーティリティ
+│   ├── migration-utils.ts # データマイグレーション
 │   ├── logger.ts          # 統一ロガー
 │   ├── errors.ts          # カスタムエラークラス
 │   └── utils.ts           # ユーティリティ
@@ -166,18 +200,41 @@ src/
 │   ├── tabs/
 │   │   ├── InputTab.tsx   # 新規入力タブ
 │   │   ├── HistoryTab.tsx # 履歴タブ
-│   │   ├── AnalysisTab.tsx # 分析タブ（プレースホルダー）
+│   │   ├── AnalysisTab.tsx # 分析タブ
 │   │   └── SettingsTab.tsx # 設定タブ
-│   ├── SessionDetailDialog.tsx # セッション詳細ダイアログ
+│   ├── input/             # 入力タブ用コンポーネント
+│   │   ├── ScoreInputTable.tsx
+│   │   ├── SessionSettings.tsx
+│   │   └── TotalsPanel.tsx
+│   ├── analysis/          # 分析タブ用コンポーネント
+│   │   ├── AnalysisFilters.tsx
+│   │   ├── RankStatisticsChart.tsx
+│   │   └── RevenueTimelineChart.tsx
+│   ├── SessionDetailDialog.tsx # セッション詳細（タブ、コピー、テンプレ保存）
+│   ├── SessionMemoInput.tsx    # メモ入力（50文字、自動保存）
+│   ├── TemplateDialog.tsx      # テンプレート編集ダイアログ
+│   ├── TemplateManagementSection.tsx # テンプレート管理UI
 │   ├── PlayerSelect.tsx   # プレイヤー選択コンポーネント
 │   ├── NewPlayerDialog.tsx # 新規プレイヤー登録ダイアログ
+│   ├── MigrationTool.tsx  # データマイグレーションUI
 │   ├── ErrorBoundary.tsx  # エラーバウンダリ
 │   └── ui/                # shadcn/uiコンポーネント
 ├── hooks/
 │   ├── useUsers.ts        # ユーザー管理フック
-│   └── useSessions.ts     # セッション管理フック
+│   ├── useSessions.ts     # セッション管理フック
+│   ├── useTemplates.ts    # テンプレート管理フック
+│   └── useMigration.ts    # マイグレーションフック
 ├── App.tsx                # ルートコンポーネント（タブレイアウト）
 └── main.tsx               # エントリーポイント
+
+tests/
+└── e2e/                   # Playwright E2Eテスト
+    ├── 01-session-creation.spec.ts
+    ├── 02-analysis-tab.spec.ts
+    ├── 03-chip-calculation.spec.ts
+    ├── 04-session-memo.spec.ts
+    ├── 05-template-management.spec.ts
+    └── 06-session-detail-ui.spec.ts
 ```
 
 ## Configuration
@@ -218,18 +275,31 @@ src/
 **完了済み:**
 1. ✅ DB層実装 (Phase 1)
 2. ✅ UIコンポーネント実装 (Phase 2)
-   - 新規入力タブ（InputTab）
-   - 設定タブ（SettingsTab）
 3. ✅ ユーザーアーカイブシステム (Phase 2.5)
 4. ✅ DB保存機能 (Phase 3)
-5. ✅ 履歴タブ基本機能 (Phase 4 Stage 1-3)
-   - セッション一覧・詳細表示
-   - 削除機能
-   - パフォーマンス最適化（サマリー事前計算）
+5. ✅ 履歴タブ (Phase 4)
+   - セッション一覧・詳細表示・削除・編集
+   - メモ機能 (#3)
+   - コピー機能 (#2)
+6. ✅ 分析タブ基本機能 (Phase 5)
+   - 着順統計・グラフ (#4)
+   - 記録セクション (#5, #12)
+   - フィルタ機能
+7. ✅ テンプレート機能 (#7, #8, #9)
+   - テンプレート管理（作成・編集・削除）
+   - 入力タブでの選択・適用
+   - セッション詳細からの保存
+8. ✅ SessionDetailDialog UI刷新 (#15)
+   - タブ切り替え（サマリー/半荘詳細）
+   - アクションボタン（コピー/テンプレ保存）
+
+**オープンIssue:**
+- #6: バックアップ・復元機能
+- #10: 精算タブ（出納帳機能）
+- #13: 分析タブ詳細セクションのタブUI化
+- #14: 詳細グラフ実装（着順推移・累計系）
 
 **次のステップ:**
-- Phase 4 Stage 4-5: 編集機能、UI/UX改善
-- Phase 5: 分析タブ実装
 - Phase 6: Capacitor統合（iOS/Androidアプリ化）
 
 ## Documentation

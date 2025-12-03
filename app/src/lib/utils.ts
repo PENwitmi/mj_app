@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { UmaRule } from './db'
+import { logger } from './logger'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -26,7 +27,9 @@ export function getDefaultUmaRule(): UmaRule {
 
   // 無効な値の場合は修正
   if (stored !== null) {
-    console.warn(`Invalid uma rule in localStorage: ${stored}. Resetting to 'standard'.`)
+    logger.warn(`Invalid uma rule in localStorage: ${stored}. Resetting to 'standard'.`, {
+      context: 'utils.getDefaultUmaRule'
+    })
   }
   setDefaultUmaRule('standard')
   return 'standard'

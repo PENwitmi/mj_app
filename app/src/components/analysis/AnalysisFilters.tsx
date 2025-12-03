@@ -4,25 +4,31 @@ import type { GameMode } from '@/lib/db-utils'
 import type { PeriodType } from '@/lib/db-utils'
 import type { User } from '@/lib/db-utils'
 
+export type ViewMode = 'personal' | 'comparison'
+
 interface AnalysisFiltersProps {
+  viewMode: ViewMode
   selectedUserId: string
   selectedPeriod: PeriodType
   selectedMode: GameMode | 'all'
   mainUser: User | null
   users: User[]
   availableYears: number[]
+  onViewModeChange: (mode: ViewMode) => void
   onUserChange: (userId: string) => void
   onPeriodChange: (period: PeriodType) => void
   onModeChange: (mode: GameMode | 'all') => void
 }
 
 export function AnalysisFilters({
+  viewMode,
   selectedUserId,
   selectedPeriod,
   selectedMode,
   mainUser,
   users,
   availableYears,
+  onViewModeChange,
   onUserChange,
   onPeriodChange,
   onModeChange
@@ -30,13 +36,30 @@ export function AnalysisFilters({
   return (
     <Card className="py-0">
       <CardContent className="p-3 space-y-3">
+        {/* 表示モード切り替え */}
+        <div>
+          <Tabs value={viewMode} onValueChange={(value) => onViewModeChange(value as ViewMode)}>
+            <TabsList
+              className="grid w-full grid-cols-2 h-10"
+              aria-label="表示モード選択"
+            >
+              <TabsTrigger value="personal" className="text-sm">
+                個人統計
+              </TabsTrigger>
+              <TabsTrigger value="comparison" className="text-sm">
+                全ユーザー比較
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
         {/* ユーザー選択・期間選択 */}
         <div className="grid grid-cols-2 gap-2">
-          {/* ユーザー選択 */}
+          {/* ユーザー選択（比較モード時は非活性） */}
           <div className="space-y-1">
             <label
               htmlFor="analysis-user-select"
-              className="text-xs text-muted-foreground"
+              className={`text-xs ${viewMode === 'comparison' ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
             >
               ユーザー
             </label>
@@ -45,7 +68,10 @@ export function AnalysisFilters({
               name="userId"
               value={selectedUserId}
               onChange={(e) => onUserChange(e.target.value)}
-              className="w-full h-12 text-sm border rounded px-2"
+              disabled={viewMode === 'comparison'}
+              className={`w-full h-12 text-sm border rounded px-2 ${
+                viewMode === 'comparison' ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               aria-label="分析対象ユーザーを選択"
             >
               {/* メインユーザー */}

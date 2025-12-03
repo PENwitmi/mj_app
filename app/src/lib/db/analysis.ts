@@ -86,6 +86,10 @@ export interface RecordStatistics {
   maxRevenueInSession: { value: number; date: string }    // セッション最高収支 + 日付
   minRevenueInSession: { value: number; date: string }    // セッション最低収支 + 日付
 
+  // セッション単位（チップ）
+  maxChipsInSession: { value: number; date: string }      // セッション最高チップ + 日付
+  minChipsInSession: { value: number; date: string }      // セッション最低チップ + 日付
+
   // 連続記録（過去最大）
   maxConsecutiveTopStreak: number                          // 最大連続トップ記録
   maxConsecutiveLastStreak: number                         // 最大連続ラス記録
@@ -418,6 +422,8 @@ export function calculateRecordStatistics(
   let minPointsInSession = { value: Infinity, date: '' }
   let maxRevenueInSession = { value: -Infinity, date: '' }
   let minRevenueInSession = { value: Infinity, date: '' }
+  let maxChipsInSession = { value: -Infinity, date: '' }
+  let minChipsInSession = { value: Infinity, date: '' }
 
   // 1. 全半荘を時系列順に収集・ソート
   type HanchanWithContext = {
@@ -479,10 +485,11 @@ export function calculateRecordStatistics(
     }
   })
 
-  // 3. セッション単位のポイント・収支を計算
+  // 3. セッション単位のポイント・収支・チップを計算
   const sessionResults = new Map<string, {
     points: number
     revenue: number
+    chips: number
     date: string
   }>()
 
@@ -529,12 +536,13 @@ export function calculateRecordStatistics(
     sessionResults.set(session.id, {
       points: sessionPoints,
       revenue: sessionRevenue,
+      chips: sessionChips,
       date: session.date
     })
   })
 
   // セッション単位の最高/最低を判定
-  sessionResults.forEach(({ points, revenue, date }) => {
+  sessionResults.forEach(({ points, revenue, chips, date }) => {
     if (points > maxPointsInSession.value) {
       maxPointsInSession = { value: points, date }
     }
@@ -546,6 +554,12 @@ export function calculateRecordStatistics(
     }
     if (revenue < minRevenueInSession.value) {
       minRevenueInSession = { value: revenue, date }
+    }
+    if (chips > maxChipsInSession.value) {
+      maxChipsInSession = { value: chips, date }
+    }
+    if (chips < minChipsInSession.value) {
+      minChipsInSession = { value: chips, date }
     }
   })
 
@@ -588,6 +602,8 @@ export function calculateRecordStatistics(
     minPointsInSession,
     maxRevenueInSession,
     minRevenueInSession,
+    maxChipsInSession,
+    minChipsInSession,
     maxConsecutiveTopStreak: maxTopStreak,
     maxConsecutiveLastStreak: maxLastStreak,
     currentTopStreak: currentTopStreak > 0 ? currentTopStreak : undefined,

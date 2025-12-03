@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { AnalysisFilters } from '@/components/analysis/AnalysisFilters'
+import { AnalysisFilters, type ViewMode } from '@/components/analysis/AnalysisFilters'
 import { DetailStatsTabs } from '@/components/analysis/DetailStatsTabs'
+import { UserRankingView } from '@/components/analysis/UserRankingView'
 import { useSessions } from '@/hooks/useSessions'
+import { useAllUsersRanking } from '@/hooks/useAllUsersRanking'
 import type { GameMode, PlayerResult, User } from '@/lib/db-utils'
 import type { PeriodType } from '@/lib/db-utils'
 import {
@@ -24,6 +26,7 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
   const { sessions, loading, error } = useSessions(mainUser?.id || '', { includeHanchans: true })
 
   // フィルターState
+  const [viewMode, setViewMode] = useState<ViewMode>('personal')
   const [selectedUserId, setSelectedUserId] = useState<string>(mainUser?.id || '')
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('all-time')
   const [selectedMode, setSelectedMode] = useState<GameMode | 'all'>('4-player')
@@ -93,45 +96,6 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
   const allStats = useMemo(() => {
     if (filteredSessions.length === 0) return null
     const stats = calculateAllStatistics(filteredSessions, selectedUserId, selectedMode, rankStats)
-
-    // Issue #11 検証用ログ: 統合関数による1回のイテレーションで全統計が正しく計算されていることを確認
-    console.group('📊 [Issue #11] 統合統計計算結果')
-    console.log('入力:', {
-      セッション数: filteredSessions.length,
-      対象ユーザー: selectedUserId,
-      モード: selectedMode
-    })
-    console.log('💰 収支統計:', {
-      'プラス収支合計': `+${stats.revenue.totalIncome}pt`,
-      'マイナス収支合計': `${stats.revenue.totalExpense}pt`,
-      '総収支': `${stats.revenue.totalBalance >= 0 ? '+' : ''}${stats.revenue.totalBalance}pt`,
-      '場代合計': `${stats.revenue.totalParlorFee}pt`
-    })
-    console.log('📈 ポイント統計:', {
-      'プラスポイント': `+${stats.point.plusPoints}点`,
-      'マイナスポイント': `${stats.point.minusPoints}点`,
-      '総ポイント': `${stats.point.pointBalance >= 0 ? '+' : ''}${stats.point.pointBalance}点`
-    })
-    console.log('🎰 チップ統計:', {
-      'プラスチップ': `+${stats.chip.plusChips}枚`,
-      'マイナスチップ': `${stats.chip.minusChips}枚`,
-      '総チップ': `${stats.chip.chipBalance >= 0 ? '+' : ''}${stats.chip.chipBalance}枚`
-    })
-    console.log('📌 基本統計:', {
-      '総セッション数': `${stats.basic.totalSessions}回`,
-      '総半荘数': `${stats.basic.totalHanchans}半荘`,
-      '平均スコア/半荘': `${stats.basic.averageScorePerHanchan >= 0 ? '+' : ''}${Math.round(stats.basic.averageScorePerHanchan)}点`,
-      '平均収支/セッション': `${stats.basic.averageRevenuePerSession >= 0 ? '+' : ''}${Math.round(stats.basic.averageRevenuePerSession)}pt`,
-      '平均チップ/セッション': `${stats.basic.averageChipsPerSession >= 0 ? '+' : ''}${stats.basic.averageChipsPerSession.toFixed(2)}枚`,
-      '平均着順': stats.basic.averageRank !== undefined ? `${stats.basic.averageRank.toFixed(2)}位` : '(全体モード)'
-    })
-    console.log('✅ 計算検証:', {
-      '収支整合性': stats.revenue.totalIncome + stats.revenue.totalExpense === stats.revenue.totalBalance ? 'OK' : 'NG',
-      'ポイント整合性': stats.point.plusPoints + stats.point.minusPoints === stats.point.pointBalance ? 'OK' : 'NG',
-      'チップ整合性': stats.chip.plusChips + stats.chip.minusChips === stats.chip.chipBalance ? 'OK' : 'NG'
-    })
-    console.groupEnd()
-
     return stats
   }, [filteredSessions, selectedUserId, selectedMode, rankStats])
 
@@ -149,6 +113,22 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
     logger.debug('記録統計計算完了', { context: 'AnalysisTab.recordStats', data: stats })
     return stats
   }, [filteredSessions, selectedUserId, selectedMode])
+
+  // ランキング用セッション（期間とモードでフィルタ、ユーザーフィルタなし）
+  const rankingFilteredSessions = useMemo(() => {
+    let filtered = sessions
+    filtered = filterSessionsByPeriod(filtered, selectedPeriod)
+    // モードフィルタはuseAllUsersRanking内で処理
+    return filtered
+  }, [sessions, selectedPeriod])
+
+  // 全ユーザーランキング（Issue #16）
+  const { rankings, userCount } = useAllUsersRanking(
+    rankingFilteredSessions,
+    selectedMode,
+    mainUser,
+    users
+  )
 
   // ローディング・エラー表示
   if (loading) {
@@ -182,19 +162,28 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
       <div className="space-y-3">
       {/* フィルターエリア */}
       <AnalysisFilters
+        viewMode={viewMode}
         selectedUserId={selectedUserId}
         selectedPeriod={selectedPeriod}
         selectedMode={selectedMode}
         mainUser={mainUser}
         users={users}
         availableYears={availableYears}
+        onViewModeChange={setViewMode}
         onUserChange={setSelectedUserId}
         onPeriodChange={setSelectedPeriod}
         onModeChange={setSelectedMode}
       />
 
       {/* 統計表示エリア */}
-      {filteredSessions.length === 0 ? (
+      {viewMode === 'comparison' ? (
+        // 全ユーザー比較モード
+        <UserRankingView
+          rankings={rankings}
+          userCount={userCount}
+          mode={selectedMode}
+        />
+      ) : filteredSessions.length === 0 ? (
         <Card className="py-3">
           <CardContent className="py-12 text-center">
             <p className="text-lg font-medium text-muted-foreground mb-2">
@@ -323,6 +312,30 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
                     </span>
                     <span className="text-xs text-muted-foreground mt-0.5">
                       {recordStats.minRevenueInSession.date}
+                    </span>
+                  </div>
+
+                  {/* 1日最高チップ */}
+                  <div className="flex flex-col items-center py-1">
+                    <span className="text-xs text-muted-foreground mb-0.5">1日最高チップ</span>
+                    <span className="text-2xl font-bold text-blue-600">
+                      {recordStats.maxChipsInSession.value >= 0 ? '+' : ''}
+                      {recordStats.maxChipsInSession.value}枚
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-0.5">
+                      {recordStats.maxChipsInSession.date}
+                    </span>
+                  </div>
+
+                  {/* 1日最低チップ */}
+                  <div className="flex flex-col items-center py-1">
+                    <span className="text-xs text-muted-foreground mb-0.5">1日最低チップ</span>
+                    <span className="text-2xl font-bold text-red-600">
+                      {recordStats.minChipsInSession.value >= 0 ? '+' : ''}
+                      {recordStats.minChipsInSession.value}枚
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-0.5">
+                      {recordStats.minChipsInSession.date}
                     </span>
                   </div>
 

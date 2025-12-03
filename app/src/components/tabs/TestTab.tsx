@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { RankStatisticsChartPiePrototype } from '@/components/test/RankStatisticsChartPiePrototype'
-import { AnalysisFilters } from '@/components/analysis/AnalysisFilters'
+import { AnalysisFilters, type ViewMode } from '@/components/analysis/AnalysisFilters'
 import { useSessions } from '@/hooks/useSessions'
 import type { RankStatistics, GameMode, User } from '@/lib/db-utils'
 import type { PeriodType } from '@/lib/db-utils'
@@ -26,6 +26,7 @@ export function TestTab({ mainUser, users, addNewUser: _addNewUser }: TestTabPro
   const { sessions, loading, error } = useSessions(mainUser?.id || '', { includeHanchans: true })
 
   // フィルターState
+  const [viewMode, setViewMode] = useState<ViewMode>('personal')
   const [selectedUserId, setSelectedUserId] = useState<string>(mainUser?.id || '')
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('all-time')
   const [selectedMode, setSelectedMode] = useState<GameMode | 'all'>('4-player')
@@ -174,12 +175,14 @@ export function TestTab({ mainUser, users, addNewUser: _addNewUser }: TestTabPro
 
           {/* フィルター */}
           <AnalysisFilters
+            viewMode={viewMode}
             selectedUserId={selectedUserId}
             selectedPeriod={selectedPeriod}
             selectedMode={selectedMode}
             mainUser={mainUser}
             users={users}
             availableYears={availableYears}
+            onViewModeChange={setViewMode}
             onUserChange={setSelectedUserId}
             onPeriodChange={setSelectedPeriod}
             onModeChange={setSelectedMode}
