@@ -42,7 +42,8 @@ export function UserRankingView({ rankings, userCount, mode, sessionCountFilter 
           rankings={[
             { label: '平均着順', entries: rankings.averageRank },
             { label: 'トップ率', entries: rankings.topRate },
-            { label: '連対率', entries: rankings.rentaiRate },
+            // 3人打ちでは連対率=ラス回避率なので非表示
+            ...(mode === '4-player' ? [{ label: '連対率', entries: rankings.rentaiRate }] : []),
             { label: 'ラス回避率', entries: rankings.lastAvoidRate }
           ]}
           sessionCountFilter={sessionCountFilter}
