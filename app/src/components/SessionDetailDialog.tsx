@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -155,28 +155,25 @@ export function SessionDetailDialog({
   }
 
   // 各プレイヤー列に対する除外ユーザーIDを計算
-  const getExcludeUserIds = useCallback(
-    (currentPlayerIndex: number): string[] => {
-      const excludeIds: string[] = []
+  const getExcludeUserIds = (currentPlayerIndex: number): string[] => {
+    const excludeIds: string[] = []
 
-      // メインユーザーを除外（列1以外）
-      if (currentPlayerIndex !== 0 && mainUser) {
-        excludeIds.push(mainUser.id)
-      }
+    // メインユーザーを除外（列1以外）
+    if (currentPlayerIndex !== 0 && mainUser) {
+      excludeIds.push(mainUser.id)
+    }
 
-      // 他列選択中のユーザーを除外
-      if (editableHanchans.length > 0) {
-        editableHanchans[0].players.forEach((player, idx) => {
-          if (idx !== currentPlayerIndex && player.userId) {
-            excludeIds.push(player.userId)
-          }
-        })
-      }
+    // 他列選択中のユーザーを除外
+    if (editableHanchans.length > 0) {
+      editableHanchans[0].players.forEach((player, idx) => {
+        if (idx !== currentPlayerIndex && player.userId) {
+          excludeIds.push(player.userId)
+        }
+      })
+    }
 
-      return excludeIds
-    },
-    [editableHanchans, mainUser]
-  )
+    return excludeIds
+  }
 
   // 変更検知
   const handleSettingsChange = (settings: SessionSettings) => {

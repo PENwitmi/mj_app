@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -179,28 +179,25 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
    * @param currentPlayerIndex - 現在の列インデックス
    * @returns 除外すべきユーザーIDの配列
    */
-  const getExcludeUserIds = useCallback(
-    (currentPlayerIndex: number): string[] => {
-      const excludeIds: string[] = []
+  const getExcludeUserIds = (currentPlayerIndex: number): string[] => {
+    const excludeIds: string[] = []
 
-      // メインユーザーを除外（列1以外）
-      if (currentPlayerIndex !== 0 && mainUser) {
-        excludeIds.push(mainUser.id)
-      }
+    // メインユーザーを除外（列1以外）
+    if (currentPlayerIndex !== 0 && mainUser) {
+      excludeIds.push(mainUser.id)
+    }
 
-      // 他列選択中のユーザーを除外
-      if (hanchans.length > 0) {
-        hanchans[0].players.forEach((player, idx) => {
-          if (idx !== currentPlayerIndex && player.userId) {
-            excludeIds.push(player.userId)
-          }
-        })
-      }
+    // 他列選択中のユーザーを除外
+    if (hanchans.length > 0) {
+      hanchans[0].players.forEach((player, idx) => {
+        if (idx !== currentPlayerIndex && player.userId) {
+          excludeIds.push(player.userId)
+        }
+      })
+    }
 
-      return excludeIds
-    },
-    [hanchans, mainUser]
-  )
+    return excludeIds
+  }
 
   // プレイヤー選択更新ハンドラー
   const handlePlayerChange = (playerIndex: number, userId: string | null, playerName: string) => {

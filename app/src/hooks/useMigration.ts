@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { migrateAllSessionSummaries, checkMigrationNeeded, type MigrationResult, type MigrationProgress } from '@/lib/migration-utils'
 import { logger } from '@/lib/logger'
 
@@ -38,7 +38,7 @@ export function useMigration(): UseMigrationReturn {
   /**
    * マイグレーションが必要かチェック
    */
-  const checkIfNeeded = useCallback(async () => {
+  const checkIfNeeded = async () => {
     setStatus('checking')
     setError(null)
 
@@ -61,12 +61,12 @@ export function useMigration(): UseMigrationReturn {
         error: err as Error
       })
     }
-  }, [])
+  }
 
   /**
    * マイグレーションを実行
    */
-  const executeMigration = useCallback(async (mainUserId: string) => {
+  const executeMigration = async (mainUserId: string) => {
     setStatus('running')
     setProgress(null)
     setResult(null)
@@ -120,12 +120,12 @@ export function useMigration(): UseMigrationReturn {
         error: err as Error
       })
     }
-  }, [])
+  }
 
   /**
    * 状態をリセット
    */
-  const reset = useCallback(() => {
+  const reset = () => {
     setStatus('idle')
     setProgress(null)
     setResult(null)
@@ -135,7 +135,7 @@ export function useMigration(): UseMigrationReturn {
     logger.debug('マイグレーション状態リセット', {
       context: 'useMigration.reset'
     })
-  }, [])
+  }
 
   return {
     status,

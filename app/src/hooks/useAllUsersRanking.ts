@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+// React Compiler handles memoization automatically
 import type { User, GameMode, Session, Hanchan, PlayerResult } from '@/lib/db'
 import {
   calculateAllStatistics,
@@ -145,10 +145,10 @@ export function useAllUsersRanking(
   users: User[],
   sessionCountFilter: SessionCountFilter = 'all'
 ): UseAllUsersRankingResult {
-  const rankings = useMemo(() => {
-    // 全ユーザーリスト
-    const allUsers = mainUser ? [mainUser, ...users] : users
+  // 全ユーザーリスト
+  const allUsers = mainUser ? [mainUser, ...users] : users
 
+  const rankings = (() => {
     if (allUsers.length === 0) {
       return createEmptyRankings()
     }
@@ -312,12 +312,9 @@ export function useAllUsersRanking(
         formatters.streak
       )
     } satisfies Rankings
-  }, [sessions, mode, mainUser, users, sessionCountFilter])
+  })()
 
-  const userCount = useMemo(() => {
-    const allUsers = mainUser ? [mainUser, ...users] : users
-    return allUsers.length
-  }, [mainUser, users])
+  const userCount = allUsers.length
 
   return { rankings, userCount }
 }

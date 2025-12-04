@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { AnalysisFilters, type ViewMode } from '@/components/analysis/AnalysisFilters'
 import { DetailStatsTabs } from '@/components/analysis/DetailStatsTabs'
@@ -14,7 +14,6 @@ import {
   calculateRecordStatistics,
   calculateAllStatistics
 } from '@/lib/db-utils'
-import { logger } from '@/lib/logger'
 
 interface AnalysisTabProps {
   mainUser: User | null
@@ -34,17 +33,17 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
   const [includeParlorFee, setIncludeParlorFee] = useState(false)  // 詳細タブ収支の場代含む/含まない
 
   // 利用可能な年リストを生成（セッションデータから）
-  const availableYears = useMemo(() => {
+  const availableYears = (() => {
     const years = new Set<number>()
     sessions.forEach(s => {
       const year = parseInt(s.session.date.substring(0, 4))
       years.add(year)
     })
     return Array.from(years).sort((a, b) => b - a) // 降順
-  }, [sessions])
+  })()
 
   // フィルター適用
-  const filteredSessions = useMemo(() => {
+  const filteredSessions = (() => {
     let filtered = sessions
     filtered = filterSessionsByPeriod(filtered, selectedPeriod)
     filtered = filterSessionsByMode(filtered, selectedMode)
@@ -61,21 +60,11 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
       )
     })
 
-    logger.debug('ユーザー参加フィルター適用', {
-      context: 'AnalysisTab.filteredSessions',
-      data: {
-        userId: selectedUserId,
-        period: selectedPeriod,
-        mode: selectedMode,
-        resultCount: filtered.length
-      }
-    })
-
     return filtered
-  }, [sessions, selectedPeriod, selectedMode, selectedUserId])
+  })()
 
   // hanchans収集（着順統計用）
-  const hanchans = useMemo(() => {
+  const hanchans = (() => {
     const allHanchans: Array<{ players: PlayerResult[] }> = []
     filteredSessions.forEach(({ hanchans }) => {
       if (hanchans) {
@@ -85,21 +74,21 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
       }
     })
     return allHanchans
-  }, [filteredSessions])
+  })()
 
   // 着順統計（calculateAllStatisticsで使用するため先に計算）
-  const rankStats = useMemo(() => {
+  const rankStats = (() => {
     if (selectedMode === 'all') return undefined
     if (hanchans.length === 0) return undefined
     return calculateRankStatistics(hanchans, selectedUserId, selectedMode)
-  }, [hanchans, selectedUserId, selectedMode])
+  })()
 
   // 統合統計計算（Issue #11: 4回のループ → 1回に最適化）
-  const allStats = useMemo(() => {
+  const allStats = (() => {
     if (filteredSessions.length === 0) return null
     const stats = calculateAllStatistics(filteredSessions, selectedUserId, selectedMode, rankStats)
     return stats
-  }, [filteredSessions, selectedUserId, selectedMode, rankStats])
+  })()
 
   // 個別統計へのアクセス用（既存JSXとの互換性のため）
   const revenueStats = allStats?.revenue ?? null
@@ -108,21 +97,20 @@ export function AnalysisTab({ mainUser, users, addNewUser: _addNewUser }: Analys
   const basicStats = allStats?.basic ?? null
 
   // 記録統計（Issue #5）
-  const recordStats = useMemo(() => {
+  const recordStats = (() => {
     if (filteredSessions.length === 0) return null
 
     const stats = calculateRecordStatistics(filteredSessions, selectedUserId, selectedMode)
-    logger.debug('記録統計計算完了', { context: 'AnalysisTab.recordStats', data: stats })
     return stats
-  }, [filteredSessions, selectedUserId, selectedMode])
+  })()
 
   // ランキング用セッション（期間とモードでフィルタ、ユーザーフィルタなし）
-  const rankingFilteredSessions = useMemo(() => {
+  const rankingFilteredSessions = (() => {
     let filtered = sessions
     filtered = filterSessionsByPeriod(filtered, selectedPeriod)
     // モードフィルタはuseAllUsersRanking内で処理
     return filtered
-  }, [sessions, selectedPeriod])
+  })()
 
   // 全ユーザーランキング（Issue #16, #17）
   const { rankings, userCount } = useAllUsersRanking(

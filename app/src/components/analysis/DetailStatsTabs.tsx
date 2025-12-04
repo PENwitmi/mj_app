@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { RankTimelineChart } from '@/components/analysis/RankTimelineChart'
@@ -165,13 +164,12 @@ export function DetailStatsTabs({
   const defaultTab = mode === 'all' ? 'revenue' : 'rank'
 
   // 収支推移データ（場代オプション対応）
-  const revenueChartData = useMemo(() => {
-    if (sessions.length === 0) return []
-    return prepareRevenueTimelineData(sessions, userId, includeParlorFee)
-  }, [sessions, userId, includeParlorFee])
+  const revenueChartData = sessions.length === 0
+    ? []
+    : prepareRevenueTimelineData(sessions, userId, includeParlorFee)
 
   // 収支統計（場代オプション対応） - グラフデータから計算
-  const localRevenueStats = useMemo(() => {
+  const localRevenueStats = (() => {
     let totalIncome = 0
     let totalExpense = 0
     revenueChartData.forEach(d => {
@@ -185,19 +183,17 @@ export function DetailStatsTabs({
       // 場代はrevenueStatsから取得（参考表示用）
       totalParlorFee: revenueStats?.totalParlorFee ?? 0
     }
-  }, [revenueChartData, revenueStats])
+  })()
 
   // スコア推移データ
-  const scoreChartData = useMemo(() => {
-    if (sessions.length === 0) return []
-    return prepareScoreTimelineData(sessions, userId)
-  }, [sessions, userId])
+  const scoreChartData = sessions.length === 0
+    ? []
+    : prepareScoreTimelineData(sessions, userId)
 
   // チップ推移データ
-  const chipChartData = useMemo(() => {
-    if (sessions.length === 0) return []
-    return prepareChipTimelineData(sessions, userId)
-  }, [sessions, userId])
+  const chipChartData = sessions.length === 0
+    ? []
+    : prepareChipTimelineData(sessions, userId)
 
   return (
     <Card className="py-3">

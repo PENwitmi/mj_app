@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from "recharts"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -96,9 +96,7 @@ export function RevenueTimelineChart({
   const [displayMode, setDisplayMode] = useState<DisplayMode>('session')
 
   // データ変換
-  const chartData = useMemo(() => {
-    return prepareTimelineData(sessions, userId)
-  }, [sessions, userId])
+  const chartData = prepareTimelineData(sessions, userId)
 
   // Chart設定
   const chartConfig = {

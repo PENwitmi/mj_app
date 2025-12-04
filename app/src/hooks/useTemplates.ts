@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import {
   getAllTemplates,
   createTemplate,
@@ -19,7 +19,7 @@ export function useTemplates() {
   /**
    * テンプレート一覧をDBから再取得して状態を更新
    */
-  const loadTemplates = useCallback(async () => {
+  const loadTemplates = async () => {
     try {
       const data = await getAllTemplates()
       setTemplates(data)
@@ -31,7 +31,7 @@ export function useTemplates() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
   useEffect(() => {
     loadTemplates()
@@ -44,18 +44,18 @@ export function useTemplates() {
     return () => {
       window.removeEventListener('template-created', handleTemplateCreated)
     }
-  }, [loadTemplates])
+  }, [])
 
   /**
    * 新規テンプレートを追加
    * @param data テンプレートデータ
    * @returns 作成されたテンプレート
    */
-  const addTemplate = useCallback(async (data: TemplateFormData): Promise<Template> => {
+  const addTemplate = async (data: TemplateFormData): Promise<Template> => {
     const newTemplate = await createTemplate(data)
     setTemplates(prev => [newTemplate, ...prev]) // 先頭に追加（作成日時降順）
     return newTemplate
-  }, [])
+  }
 
   /**
    * テンプレートを更新
@@ -63,20 +63,20 @@ export function useTemplates() {
    * @param data 更新データ
    * @returns 更新されたテンプレート
    */
-  const editTemplate = useCallback(async (id: string, data: Partial<TemplateFormData>): Promise<Template> => {
+  const editTemplate = async (id: string, data: Partial<TemplateFormData>): Promise<Template> => {
     const updatedTemplate = await updateTemplate(id, data)
     setTemplates(prev => prev.map(t => t.id === id ? updatedTemplate : t))
     return updatedTemplate
-  }, [])
+  }
 
   /**
    * テンプレートを削除
    * @param id テンプレートID
    */
-  const removeTemplate = useCallback(async (id: string): Promise<void> => {
+  const removeTemplate = async (id: string): Promise<void> => {
     await deleteTemplate(id)
     setTemplates(prev => prev.filter(t => t.id !== id))
-  }, [])
+  }
 
   return {
     templates,

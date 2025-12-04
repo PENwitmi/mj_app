@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { ComposedChart, Area, Bar, CartesianGrid, XAxis, YAxis, ReferenceLine } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart"
@@ -37,7 +36,7 @@ export function TimelineAreaChart({
   const barColor = colors.bar || "#3b82f6"   // 青系
 
   // Chart設定
-  const chartConfig = useMemo(() => ({
+  const chartConfig = {
     value: {
       label: "単発",
       color: barColor
@@ -46,7 +45,7 @@ export function TimelineAreaChart({
       label: "累積",
       color: areaColor
     }
-  } satisfies ChartConfig), [barColor, areaColor])
+  } satisfies ChartConfig
 
   // エッジケース: データなし
   if (data.length === 0) {

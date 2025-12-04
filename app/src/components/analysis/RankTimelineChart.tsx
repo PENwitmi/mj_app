@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart"
@@ -104,9 +103,7 @@ export function RankTimelineChart({
   limit = 20
 }: RankTimelineChartProps) {
   // データ準備
-  const chartData = useMemo(() => {
-    return prepareRankTimelineData(sessions, userId, mode, limit)
-  }, [sessions, userId, mode, limit])
+  const chartData = prepareRankTimelineData(sessions, userId, mode, limit)
 
   // Y軸の範囲（4人打ち: 1〜4、3人打ち: 1〜3）
   const maxRank = mode === '4-player' ? 4 : 3
