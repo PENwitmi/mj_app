@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/accordion'
 import { NewPlayerDialog } from '@/components/NewPlayerDialog'
 import { MigrationTool } from '@/components/MigrationTool'
+import { AppInfoSection } from '@/components/settings/AppInfoSection'
 import { TemplateManagementSection } from '@/components/TemplateManagementSection'
 import type { UmaRule, User, Template } from '@/lib/db-utils'
 import type { TemplateFormData } from '@/lib/db-utils'
@@ -184,6 +185,9 @@ export function SettingsTab({
 
       {/* データ再計算ツール */}
       <MigrationTool mainUser={mainUser} />
+
+      {/* アプリ情報 */}
+      <AppInfoSection mainUser={mainUser} />
 
       {/* ユーザー管理Dialog */}
       <Dialog open={userManagementOpen} onOpenChange={setUserManagementOpen}>
