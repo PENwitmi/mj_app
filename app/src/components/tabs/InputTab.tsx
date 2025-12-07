@@ -78,7 +78,8 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
         }))
       )
     }
-  }, [mainUser, mainUser?.name, hanchans.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainUser?.id, mainUser?.name, hanchans.length]) // mainUserオブジェクトではなくプロパティのみ依存（Issue #24）
 
   // 登録ユーザー名が変更されたら、該当するプレイヤー名を更新
   useEffect(() => {
@@ -411,25 +412,25 @@ export function InputTab({ mainUser, users, addNewUser, onSaveSuccess }: InputTa
             {/* テンプレートセクション */}
             {templates.length > 0 && (
               <div className="pt-4 border-t space-y-4">
-                  {templates.map(template => {
-                    const playerNames = getTemplatePlayerNames(template)
-                    const modeLabel = template.gameMode === '4-player' ? '4人打ち' : '3人打ち'
+                {templates.map(template => {
+                  const playerNames = getTemplatePlayerNames(template)
+                  const modeLabel = template.gameMode === '4-player' ? '4人打ち' : '3人打ち'
 
-                    return (
-                      <Button
-                        key={template.id}
-                        variant="outline"
-                        className="w-full h-20 text-lg flex flex-col items-center justify-center gap-0"
-                        onClick={() => handleTemplateSelect(template)}
-                      >
-                        <span>{template.name}</span>
-                        <span className="text-sm text-muted-foreground font-normal">
-                          {modeLabel}
-                          {playerNames.length > 0 && `・${playerNames.join(', ')}`}
-                        </span>
-                      </Button>
-                    )
-                  })}
+                  return (
+                    <Button
+                      key={template.id}
+                      variant="outline"
+                      className="w-full h-20 text-lg flex flex-col items-center justify-center gap-0"
+                      onClick={() => handleTemplateSelect(template)}
+                    >
+                      <span>{template.name}</span>
+                      <span className="text-sm text-muted-foreground font-normal">
+                        {modeLabel}
+                        {playerNames.length > 0 && `・${playerNames.join(', ')}`}
+                      </span>
+                    </Button>
+                  )
+                })}
               </div>
             )}
           </CardContent>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/lib/db-utils'
+import { db, getSessionWithDetails } from '@/lib/db-utils'
 import type { Session, Hanchan, PlayerResult } from '@/lib/db-utils'
 import { calculateSessionSummary, type SessionSummary } from '@/lib/session-utils'
 import { logger } from '@/lib/logger'
@@ -15,10 +15,10 @@ export interface SessionWithSummary {
  * セッション一覧管理カスタムフック
  * 全セッション + サマリー情報を管理
  * @param mainUserId メインユーザーID
- * @param options オプション
- * @param options.includeHanchans hanchansデータを含めるかどうか（デフォルト: false）
+ * @param mainUserId メインユーザーID
+ * @param includeHanchans hanchansデータを含めるかどうか（デフォルト: false）
  */
-export function useSessions(mainUserId: string, options?: { includeHanchans?: boolean }) {
+export function useSessions(mainUserId: string, includeHanchans: boolean = false) {
   const [sessions, setSessions] = useState<SessionWithSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -41,8 +41,7 @@ export function useSessions(mainUserId: string, options?: { includeHanchans?: bo
               let hanchans: Array<Hanchan & { players: PlayerResult[] }> | undefined
 
               // hanchansデータが必要な場合は取得
-              if (options?.includeHanchans) {
-                const { getSessionWithDetails } = await import('@/lib/db-utils')
+              if (includeHanchans) {
                 const sessionDetails = await getSessionWithDetails(session.id)
                 if (sessionDetails) {
                   hanchans = sessionDetails.hanchans
@@ -97,7 +96,7 @@ export function useSessions(mainUserId: string, options?: { includeHanchans?: bo
     }
 
     loadSessionsWithSummaries()
-  }, [allSessions, mainUserId, options?.includeHanchans])
+  }, [allSessions, mainUserId, includeHanchans])
 
   return {
     sessions,

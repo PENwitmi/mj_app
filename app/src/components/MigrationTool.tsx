@@ -33,7 +33,8 @@ export function MigrationTool({ mainUser }: MigrationToolProps) {
   // マウント時にマイグレーションが必要かチェック
   useEffect(() => {
     checkIfNeeded()
-  }, [checkIfNeeded])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // checkIfNeededはマウント時1回のみ実行（Issue #24）
 
   // 実行ボタンクリック
   const handleExecuteClick = () => {

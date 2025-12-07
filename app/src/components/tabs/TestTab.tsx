@@ -24,7 +24,7 @@ interface TestTabProps {
  * - 実データテスト
  */
 export function TestTab({ mainUser, users, addNewUser: _addNewUser }: TestTabProps) { // eslint-disable-line @typescript-eslint/no-unused-vars
-  const { sessions, loading, error } = useSessions(mainUser?.id || '', { includeHanchans: true })
+  const { sessions, loading, error } = useSessions(mainUser?.id || '', true)
 
   // フィルターState
   const [viewMode, setViewMode] = useState<ViewMode>('personal')
